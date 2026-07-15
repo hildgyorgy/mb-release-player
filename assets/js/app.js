@@ -94,3 +94,33 @@ homeLink?.addEventListener("click", () => {
 });
 
 document.addEventListener("DOMContentLoaded", App.init);
+
+document.getElementById('dropbox-chooser-btn').addEventListener('click', function() {
+    
+    const options = {
+        // Első körben "preview" linket kérünk, ezt könnyebb tesztelni
+        linkType: "preview", 
+        multiselect: true,   // Engedélyezzük több fájl kijelölését
+        extensions: ['.mp3', '.flac', '.m4a'], // Csak zenei fájlok
+        
+        success: function(files) {
+            console.log("=== DROPBOX FAJLOK BEOLVASVA ===");
+            console.log("Összesen kijelölve: " + files.length + " db fájl.");
+            
+            // Kiíratjuk minden fájl nevét és linkjét a konzolra
+            files.forEach(function(file, index) {
+                console.log(`${index + 1}. Fájl: ${file.name}`);
+                console.log(`   Link: ${file.link}`);
+            });
+            
+            alert(`Siker! ${files.length} fájlt találtam. Nyisd meg a böngésző konzolját (F12) a részletekért!`);
+        },
+        
+        cancel: function() {
+            console.log("A felhasználó bezárta a Dropbox ablakot.");
+        }
+    };
+
+    // Megnyitjuk a Dropbox felugró ablakot
+    Dropbox.choose(options);
+});
