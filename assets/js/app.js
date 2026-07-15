@@ -95,75 +95,77 @@ homeLink?.addEventListener("click", () => {
 
 document.addEventListener("DOMContentLoaded", App.init);
 
-// 1. Létrehozzuk a globális lejátszót a háttérben
 const audioPlayer = new Audio();
-let playlist = []; // Ide mentjük a lejátszható dalokat
+let playlist = []; 
+let currentTrackIndex = 0;
+
+// Létrehozunk egy Play gombot dinamikusan, de még elrejtjük
+const playBtn = document.createElement('button');
+playBtn.id = 'control-play-btn';
+playBtn.innerText = '▶️ Zene Lejátszása';
+playBtn.style.cssText = 'display: none; padding: 15px 30px; background-color: #25D366; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1.2em; margin: 20px auto;';
+document.body.appendChild(playBtn);
 
 document.getElementById('dropbox-chooser-btn').addEventListener('click', function() {
     
     const options = {
-        linkType: "preview", // Első körben jó a preview
+        linkType: "preview", 
         multiselect: true,   
         extensions: ['.mp3', '.flac', '.m4a'], 
         
         success: function(files) {
-            console.log("=== DROPBOX LEJÁTSZÁS INDÍTÁSA ===");
-            playlist = []; // Alaphelyzetbe állítjuk a listát
+            playlist = []; 
+            currentTrackIndex = 0;
 
-            files.forEach(function(file, index) {
-                // A zseniális trükk: lecseréljük a link végén a dl=0-t raw=1-re
+            files.forEach(function(file) {
                 const directLink = file.link.replace('dl=0', 'raw=1');
-                
-                // Elmentjük a dal adatait a belső lejátszási listánkba
                 playlist.push({
                     name: file.name,
                     url: directLink
                 });
-
-                console.log(`${index + 1}. hozzáadva: ${file.name}`);
             });
 
-            // Ha van a listában dal, azonnal elindítjuk az elsőt!
             if (playlist.length > 0) {
-                playTrack(0);
+                console.log(`Betöltve ${playlist.length} dal. Várjuk az indítást...`);
+                
+                // Megjelenítjük a nagy zöld lejátszás gombot!
+                playBtn.innerText = `▶️ Lejátszás: ${playlist[0].name}`;
+                playBtn.style.display = 'block'; 
             }
-        },
-        
-        cancel: function() {
-            console.log("Nem választottál ki zenét.");
         }
     };
 
     Dropbox.choose(options);
 });
 
-// 2. A lejátszó függvény
+// Amikor a felhasználó rákattint a PLAY gombra, a böngésző engedni fogja a lejátszást!
+playBtn.addEventListener('click', function() {
+    playTrack(currentTrackIndex);
+    // Ha elindult, elrejthetjük a gombot, vagy átírhatjuk "Szünet"-re
+    playBtn.style.display = 'none'; 
+});
+
 function playTrack(index) {
     if (index >= playlist.length) {
-        console.log("A lejátszási lista végére értünk.");
+        console.log("A lista végére értünk.");
         return;
     }
 
+    currentTrackIndex = index;
     const currentTrack = playlist[index];
-    console.log(`🎶 Most játszott dal: ${currentTrack.name}`);
-    console.log(`🔗 Link: ${currentTrack.url}`);
+    console.log(`🎶 Lejátszás: ${currentTrack.name}`);
 
-    // Betöltjük a közvetlen Dropbox linket a lejátszóba
     audioPlayer.src = currentTrack.url;
     
-    // Elindítjuk a lejátszást
     audioPlayer.play()
         .then(() => {
-            console.log("▶️ A lejátszás sikeresen elindult!");
+            console.log("▶️ Sikeresen megszólalt!");
         })
         .catch(err => {
-            console.error("❌ Hiba a lejátszás során. Lehet, hogy a böngésző blokkolja az automatikus indítást?", err);
-            alert("Kattints a képernyőre egyszer, hogy a böngésző engedélyezze a hang lejátszását!");
+            console.error("Hiba:", err);
         });
 
-    // Ha véget ér a szám, automatikusan jöhet a következő!
     audioPlayer.onended = function() {
-        console.log("🎵 Szám véget ért, ugrás a következőre...");
         playTrack(index + 1);
     };
 }
