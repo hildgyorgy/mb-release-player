@@ -33,26 +33,28 @@ export function parsePerformersFromRecording(recording) {
     const typeLc = String(baseType || "").toLowerCase();
 
     const isInstrument = typeLc === "instrument";
-    const isVocal =
-      typeLc === "vocal" ||
-      attrs.some((a) => {
-        const al = String(a).toLowerCase();
-        return [
-          "vocals",
-          "spoken vocals",
-          "narrator",
-          "soprano",
-          "mezzo-soprano",
-          "alto",
-          "tenor",
-          "baritone",
-          "bass",
-        ].includes(al);
-      });
+const isPerformer = typeLc === "performer";
 
-    const isExtra = EXTRA_PERFORMER_REL_TYPES.has(typeLc);
+const isVocal =
+  typeLc === "vocal" ||
+  attrs.some((a) => {
+    const al = String(a).toLowerCase();
+    return [
+      "vocals",
+      "spoken vocals",
+      "narrator",
+      "soprano",
+      "mezzo-soprano",
+      "alto",
+      "tenor",
+      "baritone",
+      "bass",
+    ].includes(al);
+  });
 
-    if (!isInstrument && !isVocal && !isExtra) continue;
+const isExtra = EXTRA_PERFORMER_REL_TYPES.has(typeLc);
+
+if (!isInstrument && !isVocal && !isPerformer && !isExtra) continue;
 
     // role label
     let role = "";
@@ -381,7 +383,7 @@ export async function renderTrackDetails(recording, work) {
 // ------------------------------------------------------------
 
 const EXCLUDE_ARTIST_REL_TYPES = new Set([
-  "instrument", "vocal", "composer", "lyricist", "librettist",
+  "instrument", "vocal", "performer", "composer", "lyricist", "librettist",
   "arranger", "writer", "conductor", "orchestra", "ensemble",
   "choir", "chorus", "concertmaster", "leader", "soloist",
   "narrator", "spoken vocals", "performing orchestra",
