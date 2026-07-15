@@ -95,32 +95,75 @@ homeLink?.addEventListener("click", () => {
 
 document.addEventListener("DOMContentLoaded", App.init);
 
+// 1. Létrehozzuk a globális lejátszót a háttérben
+const audioPlayer = new Audio();
+let playlist = []; // Ide mentjük a lejátszható dalokat
+
 document.getElementById('dropbox-chooser-btn').addEventListener('click', function() {
     
     const options = {
-        // Első körben "preview" linket kérünk, ezt könnyebb tesztelni
-        linkType: "preview", 
-        multiselect: true,   // Engedélyezzük több fájl kijelölését
-        extensions: ['.mp3', '.flac', '.m4a'], // Csak zenei fájlok
+        linkType: "preview", // Első körben jó a preview
+        multiselect: true,   
+        extensions: ['.mp3', '.flac', '.m4a'], 
         
         success: function(files) {
-            console.log("=== DROPBOX FAJLOK BEOLVASVA ===");
-            console.log("Összesen kijelölve: " + files.length + " db fájl.");
-            
-            // Kiíratjuk minden fájl nevét és linkjét a konzolra
+            console.log("=== DROPBOX LEJÁTSZÁS INDÍTÁSA ===");
+            playlist = []; // Alaphelyzetbe állítjuk a listát
+
             files.forEach(function(file, index) {
-                console.log(`${index + 1}. Fájl: ${file.name}`);
-                console.log(`   Link: ${file.link}`);
+                // A zseniális trükk: lecseréljük a link végén a dl=0-t raw=1-re
+                const directLink = file.link.replace('dl=0', 'raw=1');
+                
+                // Elmentjük a dal adatait a belső lejátszási listánkba
+                playlist.push({
+                    name: file.name,
+                    url: directLink
+                });
+
+                console.log(`${index + 1}. hozzáadva: ${file.name}`);
             });
-            
-            alert(`Siker! ${files.length} fájlt találtam. Nyisd meg a böngésző konzolját (F12) a részletekért!`);
+
+            // Ha van a listában dal, azonnal elindítjuk az elsőt!
+            if (playlist.length > 0) {
+                playTrack(0);
+            }
         },
         
         cancel: function() {
-            console.log("A felhasználó bezárta a Dropbox ablakot.");
+            console.log("Nem választottál ki zenét.");
         }
     };
 
-    // Megnyitjuk a Dropbox felugró ablakot
     Dropbox.choose(options);
 });
+
+// 2. A lejátszó függvény
+function playTrack(index) {
+    if (index >= playlist.length) {
+        console.log("A lejátszási lista végére értünk.");
+        return;
+    }
+
+    const currentTrack = playlist[index];
+    console.log(`🎶 Most játszott dal: ${currentTrack.name}`);
+    console.log(`🔗 Link: ${currentTrack.url}`);
+
+    // Betöltjük a közvetlen Dropbox linket a lejátszóba
+    audioPlayer.src = currentTrack.url;
+    
+    // Elindítjuk a lejátszást
+    audioPlayer.play()
+        .then(() => {
+            console.log("▶️ A lejátszás sikeresen elindult!");
+        })
+        .catch(err => {
+            console.error("❌ Hiba a lejátszás során. Lehet, hogy a böngésző blokkolja az automatikus indítást?", err);
+            alert("Kattints a képernyőre egyszer, hogy a böngésző engedélyezze a hang lejátszását!");
+        });
+
+    // Ha véget ér a szám, automatikusan jöhet a következő!
+    audioPlayer.onended = function() {
+        console.log("🎵 Szám véget ért, ugrás a következőre...");
+        playTrack(index + 1);
+    };
+}
