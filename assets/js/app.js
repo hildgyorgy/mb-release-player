@@ -149,48 +149,63 @@ playBtn.addEventListener('click', function() {
 
 // ÚJ FÜGGVÉNY: Metaadatok kiolvasása a Dropbox linkből
 function readTagsAndFetchRelease(fileUrl) {
-    window.jsmediatags.read(fileUrl, {
-        onSuccess: function(tag) {
-            console.log("=== METAADATOK BEOLVASVA ===");
-            console.log("Tag objektum:", tag.tags);
+    console.log("📥 Fájl letöltése a memóriába a metaadatok olvasásához...");
 
-            // A standard tag-ek (cím, előadó, album)
-            const title = tag.tags.title;
-            const artist = tag.tags.artist;
-            const album = tag.tags.album;
-            
-            console.log(`Fájl infó: ${artist} - ${album} (${title})`);
+    // 1. Letöltjük a teljes fájlt Blob-ként / ArrayBuffer-ként (ez kikerüli a CORS preflight hibát)
+    fetch(fileUrl)
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP hiba! Státusz: ${response.status}`);
+            return response.blob(); // Letöltjük a teljes fájlt a memóriába
+        })
+        .then(blob => {
+            console.log("✅ Fájl sikeresen letöltve. Metaadatok kibányászása...");
 
-            // Megkeressük a MusicBrainz Release ID-t a kiterjesztett tag-ek között
-            // Az m4a/iTunes formátumoknál ez gyakran az 'ufid' vagy specifikus mezők alatt van.
-            // Kiíratjuk az összes elérhető mezőt, hogy lássuk, a te fájljaidban hol lakik az MBID.
-            let mbid = null;
-            
-            if (tag.tags.ufid && tag.tags.ufid.description === 'http://musicbrainz.org') {
-                mbid = tag.tags.ufid.owner_identifier;
-            } else if (tag.tags.MUSICBRAINZ_ALBUMID) {
-                mbid = tag.tags.MUSICBRAINZ_ALBUMID;
-            }
-            
-            if (mbid) {
-                console.log("🎯 Megtalált MBID a fájlban:", mbid);
-                // ITT FOGJUK MAJD MEGHÍVNI A VIEWER FÜGGVÉNYEDET:
-                // fetchReleaseData(mbid); 
-            } else {
-                console.warn("⚠️ Nem találtam közvetlen MusicBrainz Album ID-t a fájlban.");
-                console.log("Alternatív megoldás: Keresés indítása név alapján...", album);
-                // Ha nincs MBID, a meglévő keresőddel megkereshetjük az album nevét text alapon!
-            }
+            // 2. Odaadjuk a memóriában lévő fájlt a jsmediatags-nek
+            window.jsmediatags.read(blob, {
+                onSuccess: function(tag) {
+                    console.log("=== PONTOS METAADATOK BEOLVASVA ===");
+                    console.log("Összes elérhető tag:", tag.tags);
 
-            // A metaadatok beolvasása után most már engedélyezzük a lejátszást
+                    // Kikeressük a garantáltan pontos MusicBrainz Album ID-t
+                    let mbid = null;
+
+                    // iTunes / .m4a formátum esetén az MBID-t gyakran egyedi atomokba menti a Picard
+                    if (tag.tags.MUSICBRAINZ_ALBUMID) {
+                        mbid = tag.tags.MUSICBRAINZ_ALBUMID;
+                    } else if (tag.tags.ufid && tag.tags.ufid.description === 'http://musicbrainz.org') {
+                        mbid = tag.tags.ufid.owner_identifier;
+                    } else {
+                        // Megnézzük, hátha a kiterjesztett (raw) tag-ek között van ott
+                        // pl. XID vagy egyéb iTunes specifikus tagek
+                        for (let key in tag.tags) {
+                            if (key.toUpperCase().includes('MUSICBRAINZ_ALBUMID') || key.toUpperCase().includes('MUSICBRAINZ_RELEASEID')) {
+                                mbid = tag.tags[key];
+                                break;
+                            }
+                        }
+                    }
+
+                    if (mbid) {
+                        console.log("🎯 Egzakt, hivatalos MBID megtalálva a fájlban:", mbid);
+                        alert(`Talált pontos MBID: ${mbid}`);
+                        // Itt fogjuk meghívni a betöltő függvényedet!
+                    } else {
+                        console.error("❌ A fájl nem tartalmaz hivatalos MusicBrainz Album ID-t.");
+                        alert("Hiba: Ez a fájl nincs megcímkézve MusicBrainz ID-val!");
+                    }
+
+                    showPlayButton();
+                },
+                onError: function(error) {
+                    console.error("❌ Hiba a helyi tag-olvasás során:", error.type, error.info);
+                    showPlayButton();
+                }
+            });
+        })
+        .catch(error => {
+            console.error("❌ Nem sikerült letölteni a fájlt:", error);
             showPlayButton();
-        },
-        onError: function(error) {
-            console.error("❌ Hiba a metaadatok olvasásakor:", error.type, error.info);
-            // Hiba esetén is engedjük lejátszani a zenét
-            showPlayButton();
-        }
-    });
+        });
 }
 
 function showPlayButton() {
