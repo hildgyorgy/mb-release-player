@@ -103,7 +103,6 @@ const audioPlayer = new Audio();
 let playlist = []; 
 let currentTrackIndex = 0;
 
-// A már meglévő Lejátszás gombunk
 const playBtn = document.createElement('button');
 playBtn.id = 'control-play-btn';
 playBtn.innerText = '▶️ Zene Lejátszása';
@@ -113,7 +112,8 @@ document.body.appendChild(playBtn);
 document.getElementById('dropbox-chooser-btn').addEventListener('click', function() {
     
     const options = {
-        linkType: "preview", 
+        // Átváltunk direct-re, hogy megkapjuk a kiterjesztett adatokat
+        linkType: "direct", 
         multiselect: true,   
         extensions: ['.mp3', '.flac', '.m4a'], 
         
@@ -121,7 +121,14 @@ document.getElementById('dropbox-chooser-btn').addEventListener('click', functio
             playlist = []; 
             currentTrackIndex = 0;
 
+            console.log("=== DROPBOX HIVATALOS VÁLASZ ===");
+            
+            // Megnézzük az ELSŐ fájl teljes struktúráját, amit a Dropbox küldött
+            // A konzolon látni fogjuk, hogy a Dropbox API beolvasta-e a tag-eket nekünk!
+            console.log("Első fájl nyers adatai a Dropboxból:", files[0]);
+
             files.forEach(function(file) {
+                // A direct linket is átírhatjuk raw-ra, ha szükséges a lejátszáshoz
                 const directLink = file.link.replace('dl=0', 'raw=1');
                 playlist.push({
                     name: file.name,
@@ -129,106 +136,38 @@ document.getElementById('dropbox-chooser-btn').addEventListener('click', functio
                 });
             });
 
-            if (playlist.length > 0) {
-                console.log(`Betöltve ${playlist.length} dal. Metaadatok olvasása...`);
-                
-                // Megpróbáljuk beolvasni az első fájl tagjeit
-                readTagsAndFetchRelease(playlist[0].url);
+            // Megpróbáljuk kihalászni az MBID-t a Dropbox által küldött objektumban
+            // Sok esetben a Dropbox a 'metadata' mezőben küld részleteket
+            let mbid = null;
+            if (files[0].metadata) {
+                console.log("Dropbox belső metaadatok:", files[0].metadata);
             }
+
+            // Mivel a CORS hibát kikerültük, azonnal mutathatjuk a gombot
+            if (playlist.length > 0) {
+                playBtn.innerText = `▶️ Lejátszás: ${playlist[0].name}`;
+                playBtn.style.display = 'block';
+            }
+        },
+        cancel: function() {
+            console.log("Nem választottál ki zenét.");
         }
     };
 
     Dropbox.choose(options);
 });
 
-// Zene lejátszása gomb eseménye
 playBtn.addEventListener('click', function() {
     playTrack(currentTrackIndex);
     playBtn.style.display = 'none'; 
 });
 
-// ÚJ FÜGGVÉNY: Metaadatok kiolvasása a Dropbox linkből
-function readTagsAndFetchRelease(fileUrl) {
-    console.log("📥 Fájl letöltése a memóriába a metaadatok olvasásához...");
-
-    // 1. Letöltjük a teljes fájlt Blob-ként / ArrayBuffer-ként (ez kikerüli a CORS preflight hibát)
-    fetch(fileUrl)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP hiba! Státusz: ${response.status}`);
-            return response.blob(); // Letöltjük a teljes fájlt a memóriába
-        })
-        .then(blob => {
-            console.log("✅ Fájl sikeresen letöltve. Metaadatok kibányászása...");
-
-            // 2. Odaadjuk a memóriában lévő fájlt a jsmediatags-nek
-            window.jsmediatags.read(blob, {
-                onSuccess: function(tag) {
-                    console.log("=== PONTOS METAADATOK BEOLVASVA ===");
-                    console.log("Összes elérhető tag:", tag.tags);
-
-                    // Kikeressük a garantáltan pontos MusicBrainz Album ID-t
-                    let mbid = null;
-
-                    // iTunes / .m4a formátum esetén az MBID-t gyakran egyedi atomokba menti a Picard
-                    if (tag.tags.MUSICBRAINZ_ALBUMID) {
-                        mbid = tag.tags.MUSICBRAINZ_ALBUMID;
-                    } else if (tag.tags.ufid && tag.tags.ufid.description === 'http://musicbrainz.org') {
-                        mbid = tag.tags.ufid.owner_identifier;
-                    } else {
-                        // Megnézzük, hátha a kiterjesztett (raw) tag-ek között van ott
-                        // pl. XID vagy egyéb iTunes specifikus tagek
-                        for (let key in tag.tags) {
-                            if (key.toUpperCase().includes('MUSICBRAINZ_ALBUMID') || key.toUpperCase().includes('MUSICBRAINZ_RELEASEID')) {
-                                mbid = tag.tags[key];
-                                break;
-                            }
-                        }
-                    }
-
-                    if (mbid) {
-                        console.log("🎯 Egzakt, hivatalos MBID megtalálva a fájlban:", mbid);
-                        alert(`Talált pontos MBID: ${mbid}`);
-                        // Itt fogjuk meghívni a betöltő függvényedet!
-                    } else {
-                        console.error("❌ A fájl nem tartalmaz hivatalos MusicBrainz Album ID-t.");
-                        alert("Hiba: Ez a fájl nincs megcímkézve MusicBrainz ID-val!");
-                    }
-
-                    showPlayButton();
-                },
-                onError: function(error) {
-                    console.error("❌ Hiba a helyi tag-olvasás során:", error.type, error.info);
-                    showPlayButton();
-                }
-            });
-        })
-        .catch(error => {
-            console.error("❌ Nem sikerült letölteni a fájlt:", error);
-            showPlayButton();
-        });
-}
-
-function showPlayButton() {
-    if (playlist.length > 0) {
-        playBtn.innerText = `▶️ Lejátszás: ${playlist[0].name}`;
-        playBtn.style.display = 'block';
-    }
-}
-
 function playTrack(index) {
-    if (index >= playlist.length) {
-        console.log("A lista végére értünk.");
-        return;
-    }
-
+    if (index >= playlist.length) return;
     currentTrackIndex = index;
     const currentTrack = playlist[index];
     console.log(`🎶 Lejátszás: ${currentTrack.name}`);
-
     audioPlayer.src = currentTrack.url;
-    audioPlayer.play().catch(err => console.error("Hiba:", err));
-
-    audioPlayer.onended = function() {
-        playTrack(index + 1);
-    };
+    audioPlayer.play().catch(err => console.error("Lejátszási hiba:", err));
+    audioPlayer.onended = function() { playTrack(index + 1); };
 }
