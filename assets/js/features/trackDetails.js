@@ -33,28 +33,27 @@ export function parsePerformersFromRecording(recording) {
     const typeLc = String(baseType || "").toLowerCase();
 
     const isInstrument = typeLc === "instrument";
-const isPerformer = typeLc === "performer";
+    const isPerformer = typeLc === "performer";
+    const isVocal =
+      typeLc === "vocal" ||
+      attrs.some((a) => {
+        const al = String(a).toLowerCase();
+        return [
+          "vocals",
+          "spoken vocals",
+          "narrator",
+          "soprano",
+          "mezzo-soprano",
+          "alto",
+          "tenor",
+          "baritone",
+          "bass",
+        ].includes(al);
+      });
 
-const isVocal =
-  typeLc === "vocal" ||
-  attrs.some((a) => {
-    const al = String(a).toLowerCase();
-    return [
-      "vocals",
-      "spoken vocals",
-      "narrator",
-      "soprano",
-      "mezzo-soprano",
-      "alto",
-      "tenor",
-      "baritone",
-      "bass",
-    ].includes(al);
-  });
+    const isExtra = EXTRA_PERFORMER_REL_TYPES.has(typeLc);
 
-const isExtra = EXTRA_PERFORMER_REL_TYPES.has(typeLc);
-
-if (!isInstrument && !isVocal && !isPerformer && !isExtra) continue;
+    if (!isInstrument && !isVocal && !isPerformer && !isExtra) continue;
 
     // role label
     let role = "";
