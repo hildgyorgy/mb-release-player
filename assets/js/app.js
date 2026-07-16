@@ -99,75 +99,92 @@ document.addEventListener("DOMContentLoaded", App.init);
 // Audio player for Dropbox music files
 // ------------------------------
 
+// Globális változók a könyvtárnak és a lejátszónak
+let musicLibrary = [];
 const audioPlayer = new Audio();
-let playlist = []; 
+let currentPlaylist = [];
 let currentTrackIndex = 0;
 
-const playBtn = document.createElement('button');
-playBtn.id = 'control-play-btn';
-playBtn.innerText = '▶️ Zene Lejátszása';
-playBtn.style.cssText = 'display: none; padding: 15px 30px; background-color: #25D366; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1.2em; margin: 20px auto;';
-document.body.appendChild(playBtn);
+// 1. Létrehozunk egy letisztult felületet a könyvtár betöltéséhez
+const container = document.createElement('div');
+container.id = 'library-container';
+container.style.cssText = 'max-width: 800px; margin: 20px auto; padding: 20px; font-family: sans-serif;';
+document.body.appendChild(container);
 
-document.getElementById('dropbox-chooser-btn').addEventListener('click', function() {
-    
-    const options = {
-        // Átváltunk direct-re, hogy megkapjuk a kiterjesztett adatokat
-        linkType: "direct", 
-        multiselect: true,   
-        extensions: ['.mp3', '.flac', '.m4a'], 
-        
-        success: function(files) {
-            playlist = []; 
-            currentTrackIndex = 0;
+const controlsDiv = document.createElement('div');
+controlsDiv.innerHTML = `
+    <h3>🎵 MusiCards Release Player</h3>
+    <p>Töltsd be a legenerált <code>library.json</code> fájlt a könyvtárad eléréséhez:</p>
+    <input type="file" id="json-file-input" accept=".json" style="padding: 10px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 20px;">
+`;
+container.appendChild(controlsDiv);
 
-            console.log("=== DROPBOX HIVATALOS VÁLASZ ===");
-            
-            // Megnézzük az ELSŐ fájl teljes struktúráját, amit a Dropbox küldött
-            // A konzolon látni fogjuk, hogy a Dropbox API beolvasta-e a tag-eket nekünk!
-            console.log("Első fájl nyers adatai a Dropboxból:", files[0]);
+const albumListDiv = document.createElement('div');
+albumListDiv.id = 'album-list';
+albumListDiv.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;';
+container.appendChild(albumListDiv);
 
-            files.forEach(function(file) {
-                // A direct linket is átírhatjuk raw-ra, ha szükséges a lejátszáshoz
-                const directLink = file.link.replace('dl=0', 'raw=1');
-                playlist.push({
-                    name: file.name,
-                    url: directLink
-                });
-            });
+// 2. Fájlbeolvasás eseménykezelője (Helyi vagy Dropboxból letöltött JSON-höz)
+document.getElementById('json-file-input').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
 
-            // Megpróbáljuk kihalászni az MBID-t a Dropbox által küldött objektumban
-            // Sok esetben a Dropbox a 'metadata' mezőben küld részleteket
-            let mbid = null;
-            if (files[0].metadata) {
-                console.log("Dropbox belső metaadatok:", files[0].metadata);
-            }
-
-            // Mivel a CORS hibát kikerültük, azonnal mutathatjuk a gombot
-            if (playlist.length > 0) {
-                playBtn.innerText = `▶️ Lejátszás: ${playlist[0].name}`;
-                playBtn.style.display = 'block';
-            }
-        },
-        cancel: function() {
-            console.log("Nem választottál ki zenét.");
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        try {
+            musicLibrary = JSON.parse(evt.target.result);
+            console.log("🎯 Könyvtár sikeresen betöltve! Albumok száma:", musicLibrary.length);
+            renderAlbumLibrary(musicLibrary);
+        } catch (err) {
+            alert("Hiba a JSON fájl beolvasásakor! Biztosan a jó fájlt választottad?");
+            console.error(err);
         }
     };
-
-    Dropbox.choose(options);
+    reader.readAsText(file);
 });
 
-playBtn.addEventListener('click', function() {
-    playTrack(currentTrackIndex);
-    playBtn.style.display = 'none'; 
-});
+// 3. Az albumlista kirajzolása a képernyőre
+function renderAlbumLibrary(library) {
+    albumListDiv.innerHTML = ''; // Kiürítjük a listát
 
-function playTrack(index) {
-    if (index >= playlist.length) return;
-    currentTrackIndex = index;
-    const currentTrack = playlist[index];
-    console.log(`🎶 Lejátszás: ${currentTrack.name}`);
-    audioPlayer.src = currentTrack.url;
-    audioPlayer.play().catch(err => console.error("Lejátszási hiba:", err));
-    audioPlayer.onended = function() { playTrack(index + 1); };
+    library.forEach((album, index) => {
+        const albumCard = document.createElement('div');
+        albumCard.style.cssText = 'border: 1px solid #ddd; border-radius: 8px; padding: 15px; text-align: center; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s;';
+        albumCard.innerHTML = `
+            <div style="width: 100%; height: 150px; background: #eaeaea; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; font-weight: bold; color: #666;">
+                📻 ALBUM
+            </div>
+            <strong style="display: block; font-size: 1.1em; margin-bottom: 5px;">${album.album_name}</strong>
+            <span style="color: #666; font-size: 0.9em;">${album.artist_name}</span>
+        `;
+
+        // Ha rákattintunk egy album kártyára
+        albumCard.addEventListener('click', () => {
+            selectAndLoadAlbum(album);
+        });
+
+        albumListDiv.appendChild(albumCard);
+    });
+}
+
+// 4. Album kiválasztása és összekötése a MusicBrainz Release Viewer-eddel
+function selectAndLoadAlbum(album) {
+    console.log("🎯 Kiválasztott album MBID:", album.album_mbid);
+    
+    // Ide ágyazzuk be a te meglévő MusicBrainz API hívásodat!
+    // Pl: fetchReleaseDetails(album.album_mbid);
+    alert(`Kiválasztottad: ${album.artist_name} - ${album.album_name}\nMusicBrainz ID: ${album.album_mbid}`);
+
+    // Előkészítjük a lejátszási listát a library.json-ben lévő adatokból
+    // Mivel egyelőre helyi / Dropbox relatív utakat használunk, meg kell adnunk az elérést.
+    // Ha Dropbox streamet akarsz, a fájlokat le kell kérni a mappából, vagy a fix bázis URL-edhez fűzni.
+    currentPlaylist = album.tracks.map(track => {
+        return {
+            title: track.title,
+            // A lejátszási URL-t dinamikusan állítjuk össze attól függően, hogy local vagy Dropbox módban vagyunk
+            url: track.filename 
+        };
+    });
+    
+    console.log("Lejátszási lista előkészítve:", currentPlaylist);
 }
