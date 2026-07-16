@@ -381,8 +381,6 @@ a:hover {
   height: 96px;
   display: block;
   margin: 0 0 52px;
-  /*filter: grayscale(1) brightness(0);
-  opacity: 0.82;*/
 }
 
 .empty-help {
@@ -424,7 +422,6 @@ a:hover {
   gap: 35px;
 }
 
-/* alaphelyzet (mobil): egymás alatt */
 .header-hero {
   grid-template-columns: 1fr;
   grid-template-areas:
@@ -433,7 +430,6 @@ a:hover {
     "tabs";
 }
 
-/* desktop: 2 oszlop, tabs a cover alatt, main jobbra */
 @media (min-width: 641px) {
   .header-hero {
     grid-template-columns: auto 1fr;
@@ -548,7 +544,6 @@ a:hover {
 
 .cover-box img.cov-next {
   transform: translateX(100%);
-  /* alapból jobbra kint */
 }
 
 .cover-box.is-animating img {
@@ -813,8 +808,6 @@ a:hover {
   gap: 8px;
 }
 
-
-
 .medium-row+.work-row .work-cell {
   padding-top: 16px;
 }
@@ -980,7 +973,6 @@ tr.track.is-open+tr.details .perf {
 }
 
 .perf .artists a {
-  /* margin-right: 8px; */
   opacity: 0.8;
 }
 
@@ -1012,13 +1004,10 @@ tr.track.is-open+tr.details .perf {
   display: flex;
   flex-wrap: wrap;
   gap: 0;
-  /* távolság a nevek között */
 }
 
-/* Egy név blokk */
 .recording-grid .rec-person {
   white-space: nowrap;
-  /* ne törje meg a neveket */
 }
 
 .recording-grid .rec-person:not(:last-child)::after {
@@ -1029,7 +1018,6 @@ tr.track.is-open+tr.details .perf {
   margin-right: 0.35em;
 }
 
-/* recordings: content reveal micro-animation */
 .rec-reveal {
   opacity: 0;
   transform: translateY(2px);
@@ -1042,7 +1030,6 @@ tr.track.is-open+tr.details .perf {
   transform: translateY(0);
 }
 
-/* Fallback box ("--" / could not load) */
 .rec-empty {
   margin-left: 20px;
   padding: 0 15px 0;
@@ -1301,10 +1288,6 @@ tr.track.is-open+tr.details .perf {
     padding: 0 0 0;
   }
 
- /* ------------------------------------------------------------
-   MOBILE COLLAPSIBLE HEADER
------------------------------------------------------------- */
-
   :root[data-hdr="closed"] {
     --top-h: 20px;
   }
@@ -1328,7 +1311,6 @@ tr.track.is-open+tr.details .perf {
     overflow: hidden;
   }
 
-  /* grabber */
   .top::after {
     content: "";
     position: absolute;
@@ -1397,6 +1379,7 @@ tr.track.is-open+tr.details .perf {
   text-align: right;
   opacity: 0.85;
 }
+
 /* ------------------------------------------------------------
    ARTIST PANEL
 ------------------------------------------------------------ */
@@ -1408,7 +1391,7 @@ tr.track.is-open+tr.details .perf {
   background: var(--panel-2);
   overflow: hidden;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  animation: ap-in 500ms ease forwards; /* Slide in from above */
+  animation: ap-in 500ms ease forwards;
 }
 
 .artist-panel .pill {
@@ -1427,10 +1410,9 @@ tr.track.is-open+tr.details .perf {
   }
 }
 
-/* Header row: name + close button */
 .ap-header {
   display: flex;
-align-items: center;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px 8px;
@@ -1480,7 +1462,6 @@ align-items: center;
   color: var(--text);
 }
 
-/* Body */
 .ap-body {
   padding: 10px 14px 14px;
   font-size: 13px;
@@ -1499,7 +1480,6 @@ align-items: center;
   white-space: nowrap;
 }
 
-/* Section label (WIKIPEDIA, DISCOGRAPHY) */
 .ap-section {
   margin-top: 12px;
 }
@@ -1514,7 +1494,6 @@ align-items: center;
   margin-bottom: 6px;
 }
 
-/* Wikipedia text */
 .ap-wiki-text {
   font-size: 13px;
   line-height: 1.5;
@@ -1526,7 +1505,6 @@ align-items: center;
   white-space: nowrap;
 }
 
-/* Discography section */
 .ap-disco-scroll {
   max-height: 320px;
   overflow-x: hidden;
@@ -1591,18 +1569,17 @@ align-items: center;
   margin: 6px 0 4px;
 }
 
-/* Loading state */
 .ap-loading {
   padding: 8px 0;
 }
 
-/* Mobile adjustments */
 @media (max-width: 640px) {
   .artist-panel {
     margin: 8px 28px 12px 0;
     border-radius: 8px;
   }
 }
+
 /* ------------------------------------------------------------
    FULL CREDITS VIEW
 ------------------------------------------------------------ */
@@ -1653,6 +1630,7 @@ align-items: center;
     column-gap: 8px;
   }
 }
+
 /* ------------------------------------------------------------
    VERSIONS VIEW
 ------------------------------------------------------------ */
@@ -1763,4 +1741,46 @@ align-items: center;
   .ver-list {
     margin-left: 16px;
   }
+}
+
+/* ============================================================
+   APPLE MUSIC HOVER PLAY BUTTON
+   ============================================================ */
+
+/* A sorszám oszlop konténere */
+.track-number-col {
+  position: relative;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+}
+
+/* Alaphelyzetben a play gomb rejtett */
+.track-play-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: #007AFF; /* Apple kék */
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  text-align: center;
+}
+
+.track-play-btn:hover {
+  transform: scale(1.15);
+  color: #0056b3;
+}
+
+/* Hover állapot: eltűnik a sorszám text, megjelenik a play gomb */
+tr.track:hover .track-num-text {
+  display: none;
+}
+
+tr.track:hover .track-play-btn {
+  display: inline-block;
 }

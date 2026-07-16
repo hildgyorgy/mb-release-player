@@ -182,6 +182,34 @@ export const App = Object.freeze({
         
         console.log("Helyi lejátszási lista előkészítve:", currentPlaylist);
     }
+
+    // 4. Play gombra való kattintás delegálása (Apple Music-féle lejátszás)
+    const outContainer = document.getElementById("out");
+    if (outContainer) {
+        outContainer.addEventListener("click", (e) => {
+            const playBtn = e.target.closest(".track-play-btn");
+            if (playBtn) {
+                // Megállítjuk az eseményt, hogy ne nyíljon le a trackdetails panel!
+                e.stopPropagation();
+
+                const trackIdx = parseInt(playBtn.dataset.trackIndex, 10);
+
+                if (currentPlaylist && currentPlaylist[trackIdx]) {
+                    currentTrackIndex = trackIdx;
+                    const trackToPlay = currentPlaylist[currentTrackIndex];
+                    console.log("▶ Lejátszás indítása:", trackToPlay.title);
+                    
+                    alert(`Most lejátszandó fájl: ${trackToPlay.filename}`);
+                    
+                    // Ide teheted majd a konkrét audio lejátszó integrációdat:
+                    // audioPlayer.src = trackToPlay.filename; (vagy Dropbox link)
+                    // audioPlayer.play();
+                } else {
+                    alert("Ehhez a számhoz nincs betöltött helyi lejátszási lista!");
+                }
+            }
+        });
+    }
   },
 });
 

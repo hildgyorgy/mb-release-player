@@ -141,12 +141,22 @@ export function renderReleasePage(out, { rel, cover, covers }, onLoadRelease, on
 
   const mediaWithTracks = media.map((m, mi) => {
     const mt = (m.tracks || []).map((t) => {
+      const idx = flatTracks.length;
+      
+      // Sorszám és play gomb HTML szerkezete
+      const trackNumberHtml = `
+        <div class="track-number-col">
+          <span class="track-num-text">${t.position}</span>
+          <button class="track-play-btn" data-track-index="${idx}" aria-label="Play track">▶</button>
+        </div>
+      `;
+
       const obj = {
-        pos: t.position,
+        pos: trackNumberHtml,
         title: t.title,
         len: fmtMs(t.length),
         rec: t.recording,
-        _i: flatTracks.length,
+        _i: idx,
       };
       flatTracks.push(obj);
       return obj;
