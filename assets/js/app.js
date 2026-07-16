@@ -105,60 +105,60 @@ const audioPlayer = new Audio();
 let currentPlaylist = [];
 let currentTrackIndex = 0;
 
-// 1. Létrehozunk egy letisztult felületet a könyvtár betöltéséhez
-const container = document.createElement('div');
-container.id = 'library-container';
-container.style.cssText = 'max-width: 800px; margin: 20px auto; padding: 20px; font-family: sans-serif;';
-document.body.appendChild(container);
+// Megkeressük a HTML-ben már létező elemeket
+const jsonFileInput = document.getElementById('json-file-input');
+const albumListDiv = document.getElementById('album-list');
 
-const controlsDiv = document.createElement('div');
-controlsDiv.innerHTML = `
-    <h3>🎵 MusiCards Release Player</h3>
-    <p>Töltsd be a legenerált <code>library.json</code> fájlt a könyvtárad eléréséhez:</p>
-    <input type="file" id="json-file-input" accept=".json" style="padding: 10px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 20px;">
-`;
-container.appendChild(controlsDiv);
+// 1. Fájlbeolvasás eseménykezelője
+if (jsonFileInput) {
+    jsonFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
 
-const albumListDiv = document.createElement('div');
-albumListDiv.id = 'album-list';
-albumListDiv.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;';
-container.appendChild(albumListDiv);
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                musicLibrary = JSON.parse(evt.target.result);
+                console.log("🎯 Könyvtár sikeresen betöltve! Albumok száma:", musicLibrary.length);
+                renderAlbumLibrary(musicLibrary);
+            } catch (err) {
+                alert("Hiba a JSON fájl beolvasásakor! Biztosan a jó fájlt választottad?");
+                console.error(err);
+            }
+        };
+        reader.readAsText(file);
+    });
+}
 
-// 2. Fájlbeolvasás eseménykezelője (Helyi vagy Dropboxból letöltött JSON-höz)
-document.getElementById('json-file-input').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-        try {
-            musicLibrary = JSON.parse(evt.target.result);
-            console.log("🎯 Könyvtár sikeresen betöltve! Albumok száma:", musicLibrary.length);
-            renderAlbumLibrary(musicLibrary);
-        } catch (err) {
-            alert("Hiba a JSON fájl beolvasásakor! Biztosan a jó fájlt választottad?");
-            console.error(err);
-        }
-    };
-    reader.readAsText(file);
-});
-
-// 3. Az albumlista kirajzolása a képernyőre
+// 2. Az albumlista kirajzolása a képernyőre
 function renderAlbumLibrary(library) {
-    albumListDiv.innerHTML = ''; // Kiürítjük a listát
+    if (!albumListDiv) return;
+    albumListDiv.innerHTML = ''; // Kiürítjük a korábbi listát (ha volt)
 
     library.forEach((album, index) => {
         const albumCard = document.createElement('div');
-        albumCard.style.cssText = 'border: 1px solid #ddd; border-radius: 8px; padding: 15px; text-align: center; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s;';
+        // Kicsit formába hozzuk az album kártyákat, hogy jól mutassanak
+        albumCard.style.cssText = 'border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; text-align: center; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;';
+        
+        // Egy kis hover effekt, hogy érezze a user, hogy kattintható
+        albumCard.onmouseover = () => {
+            albumCard.style.transform = 'translateY(-5px)';
+            albumCard.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)';
+        };
+        albumCard.onmouseout = () => {
+            albumCard.style.transform = 'translateY(0)';
+            albumCard.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+        };
+
         albumCard.innerHTML = `
-            <div style="width: 100%; height: 150px; background: #eaeaea; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; font-weight: bold; color: #666;">
-                📻 ALBUM
+            <div style="width: 100%; height: 160px; background: #f0f0f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 15px; font-size: 2.5em;">
+                💿
             </div>
-            <strong style="display: block; font-size: 1.1em; margin-bottom: 5px;">${album.album_name}</strong>
-            <span style="color: #666; font-size: 0.9em;">${album.artist_name}</span>
+            <strong style="display: block; font-size: 1.1em; margin-bottom: 5px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${album.album_name}</strong>
+            <span style="color: #666; font-size: 0.9em; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${album.artist_name}</span>
         `;
 
-        // Ha rákattintunk egy album kártyára
+        // Ha rákattintunk az albumra
         albumCard.addEventListener('click', () => {
             selectAndLoadAlbum(album);
         });
@@ -167,24 +167,23 @@ function renderAlbumLibrary(library) {
     });
 }
 
-// 4. Album kiválasztása és összekötése a MusicBrainz Release Viewer-eddel
+// 3. Album kiválasztása és összekötése a MusicBrainz-zel
 function selectAndLoadAlbum(album) {
     console.log("🎯 Kiválasztott album MBID:", album.album_mbid);
     
-    // Ide ágyazzuk be a te meglévő MusicBrainz API hívásodat!
-    // Pl: fetchReleaseDetails(album.album_mbid);
+    // 1. Megjelenítjük a felületen, hogy mi töltődik be
     alert(`Kiválasztottad: ${album.artist_name} - ${album.album_name}\nMusicBrainz ID: ${album.album_mbid}`);
 
-    // Előkészítjük a lejátszási listát a library.json-ben lévő adatokból
-    // Mivel egyelőre helyi / Dropbox relatív utakat használunk, meg kell adnunk az elérést.
-    // Ha Dropbox streamet akarsz, a fájlokat le kell kérni a mappából, vagy a fix bázis URL-edhez fűzni.
+    // 2. ITT fogod meghívni a te már létező MusicBrainz betöltődet!
+    // fetchReleaseDetails(album.album_mbid); 
+
+    // 3. Előkészítjük a lejátszási listát a library.json-ben lévő adatokból
     currentPlaylist = album.tracks.map(track => {
         return {
             title: track.title,
-            // A lejátszási URL-t dinamikusan állítjuk össze attól függően, hogy local vagy Dropbox módban vagyunk
-            url: track.filename 
+            filename: track.filename
         };
     });
     
-    console.log("Lejátszási lista előkészítve:", currentPlaylist);
+    console.log("Helyi lejátszási lista előkészítve:", currentPlaylist);
 }
