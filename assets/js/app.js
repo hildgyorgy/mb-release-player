@@ -105,6 +105,7 @@ export const App = Object.freeze({
 
     // 1. Fájlbeolvasás eseménykezelője
     if (jsonFileInput) {
+        console.log("🚀 jsonFileInput sikeresen megtalálva a DOM-ban!");
         jsonFileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -114,14 +115,17 @@ export const App = Object.freeze({
                 try {
                     musicLibrary = JSON.parse(evt.target.result);
                     console.log("🎯 Könyvtár sikeresen betöltve! Albumok száma:", musicLibrary.length);
+                    console.log("Első beolvasott album mintája:", musicLibrary[0]); // Ez megmutatja a struktúrát!
                     renderAlbumLibrary(musicLibrary);
                 } catch (err) {
                     alert("Hiba a JSON fájl beolvasásakor! Biztosan a jó fájlt választottad?");
-                    console.error(err);
+                    console.error("JSON parszolási hiba:", err);
                 }
             };
             reader.readAsText(file);
         });
+    } else {
+        console.error("❌ Hiba: A 'json-file-input' ID-jú elem nem található a DOM-ban!");
     }
 
     // 2. Az albumlista kirajzolása a képernyőre
