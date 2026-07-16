@@ -22,7 +22,6 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
   <link rel="manifest" href="./site.webmanifest">
   <link rel="stylesheet" href="assets/styles.css" />
-
 </head>
 
 <body>
@@ -38,9 +37,6 @@
             <input id="omni" type="text" autocomplete="off" spellcheck="false" placeholder="artist, release or MBID" />
             <div class="results" id="results" hidden></div>
           </div>
-          <!-- <button id="go" class="go-btn" title="Load from MusicBrainz">
-            <img src="assets/icons/MB_go.png" alt="MusicBrainz" />
-          </button> -->
           <button class="theme-fab pill" id="themeToggle" type="button"></button>
         </div>
       </div>
@@ -50,6 +46,26 @@
   <main class="wrap">
     <div class="container">
       <div id="out">
+        
+        <!-- KÖNYVTÁR KEZELŐ SZEKCIÓ (Az üres állapot felett vagy helyett) -->
+        <section id="library-section" style="max-width: 800px; margin: 0 auto 30px auto; text-align: center;">
+            <h3 style="margin-bottom: 10px;">🎵 MusiCards Release Player</h3>
+            <p style="color: var(--meta); margin-bottom: 20px;">Töltsd be a legenerált <code>library.json</code> fájlt a könyvtárad eléréséhez:</p>
+            
+            <div class="file-upload-wrapper" style="margin-bottom: 20px;">
+                <input type="file" id="json-file-input" accept=".json" style="display: none;">
+                <label for="json-file-input" style="padding: 12px 24px; background-color: #007AFF; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; display: inline-block; transition: background 0.2s;">
+                    📂 library.json betöltése
+                </label>
+            </div>
+        </section>
+
+        <!-- Albumok Rács Nézete (Grid) -->
+        <section id="album-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto 40px auto; padding: 10px;">
+            <!-- Ide illeszti be a JS az albumokat -->
+        </section>
+
+        <!-- Eredeti MusicBrainz keresési segédlet -->
         <section id="emptyState" class="empty-state seo-copy">
           <div class="empty-inner">
             <img class="empty-logo" src="./assets/icons/MB_go.png" alt="" aria-hidden="true">
@@ -59,17 +75,14 @@
                 Type artist name + comma to search for artist<br>
                 <code>miles davis,</code>
               </p>
-
               <p>
                 Type comma + release/track title for releases<br>
                 <code>, kind of blue</code>
               </p>
-
               <p>
                 Type artist, release/track for combined search<br>
                 <code>miles davis, so what</code>
               </p>
-
               <p>
                 Paste a MusicBrainz release MBID<br>
                 <code>353021d1-3d84-4f17-9fe4-66788d785a9d</code>
@@ -77,6 +90,7 @@
             </div>
           </div>
         </section>
+
       </div>
     </div>
   </main>
@@ -90,29 +104,6 @@
     </div>
   </footer>
 
-<main class="container">
-    
-    <!-- ÚJ: Könyvtár Kezelő Szekció -->
-    <section id="library-section" style="max-width: 800px; margin: 30px auto; text-align: center;">
-        <h3 style="margin-bottom: 10px;">🎵 MusiCards Release Player</h3>
-        <p style="color: #666; margin-bottom: 20px;">Töltsd be a legenerált <code>library.json</code> fájlt a könyvtárad eléréséhez:</p>
-        
-        <!-- A régi gomb helyett most egy szép, egyedi fájlválasztót teszünk be -->
-        <div class="file-upload-wrapper" style="margin-bottom: 30px;">
-            <input type="file" id="json-file-input" accept=".json" style="display: none;">
-            <label for="json-file-input" style="padding: 12px 24px; background-color: #007AFF; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; display: inline-block; transition: background 0.2s;">
-                📂 library.json betöltése
-            </label>
-        </div>
-    </section>
-
-    <!-- ÚJ: Az Albumok Rács Nézete (Grid) -->
-    <section id="album-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto; padding: 20px;">
-        <!-- Ide fogja a JS dinamikusan beilleszteni az album kártyákat -->
-    </section>
-
-</main>
-
+  <!-- Töröltük a lezáró tag utáni hibás részt! -->
 </body>
-
 </html>
