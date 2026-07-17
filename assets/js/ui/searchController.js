@@ -2,6 +2,7 @@ import { CONFIG } from "../core/config.js";
 import { STATE, setSearchState } from "../core/state.js";
 import { extractMBID, debounce, escAttr, escHtml } from "../core/util.js";
 import { searchReleases } from "../services/api.js";
+import { searchLocalLibrary } from "../services/localLibrary.js";
 
 const $ = (id) => document.getElementById(id);
 let searchClickOutsideBound = false;
@@ -100,13 +101,24 @@ export function createSearchController({ onGoByMbid, onGoFallback }) {
     }
 
     openSearch();
-    resEl.innerHTML = `<div class="result"><span class="muted">Searching…</span></div>`;
+    const requestId = STATE.search.req + 1;
+    setSearchState({ req: requestId });
+
+    const localItems = searchLocalLibrary(val, CONFIG.SEARCH_LIMIT);
+    if (localItems.length) renderSearchResults(localItems);
+    else resEl.innerHTML = `<div class="result"><span class="muted">Searching…</span></div>`;
 
     try {
-      const items = await searchReleases(val, CONFIG.SEARCH_LIMIT);
-      renderSearchResults(items);
+      const remoteItems = await searchReleases(val, CONFIG.SEARCH_LIMIT);
+      if (requestId !== STATE.search.req) return;
+
+      const seen = new Set(localItems.map((item) => item.mbid));
+      const merged = localItems.concat(remoteItems.filter((item) => !seen.has(item.mbid)));
+      renderSearchResults(merged.slice(0, CONFIG.SEARCH_LIMIT));
     } catch {
-      resEl.innerHTML = `<div class="result"><span class="muted">Search error</span></div>`;
+      if (requestId !== STATE.search.req) return;
+      if (localItems.length) renderSearchResults(localItems);
+      else resEl.innerHTML = `<div class="result"><span class="muted">Search error</span></div>`;
     }
   }, CONFIG.SEARCH_DEBOUNCE_MS);
 

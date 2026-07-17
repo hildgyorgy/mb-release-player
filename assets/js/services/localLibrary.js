@@ -85,6 +85,93 @@ export function getLocalLibrary() {
   return selectedLibrary;
 }
 
+function normalizeSearchText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function searchTokens(value) {
+  return normalizeSearchText(value).split(" ").filter(Boolean);
+}
+
+function includesEvery(haystack, tokens) {
+  return tokens.length > 0 && tokens.every((token) => haystack.includes(token));
+}
+
+function scoreLocalAlbum(album, query) {
+  const artist = normalizeSearchText(album.artist_name);
+  const title = normalizeSearchText(album.album_name);
+  const tracks = (album.tracks || []).map((track) => ({
+    title: String(track?.title || track?.filename || ""),
+    normalized: normalizeSearchText(track?.title || track?.filename),
+  }));
+
+  const commaIndex = query.indexOf(",");
+  let matches = false;
+
+  if (commaIndex !== -1) {
+    const artistTokens = searchTokens(query.slice(0, commaIndex));
+    const releaseTokens = searchTokens(query.slice(commaIndex + 1));
+    const artistMatches = !artistTokens.length || includesEvery(artist, artistTokens);
+    const releaseMatches =
+      !releaseTokens.length ||
+      includesEvery(title, releaseTokens) ||
+      tracks.some((track) => includesEvery(track.normalized, releaseTokens));
+
+    matches = artistMatches && releaseMatches && (artistTokens.length > 0 || releaseTokens.length > 0);
+  } else {
+    const tokens = searchTokens(query);
+    const allText = `${artist} ${title} ${tracks.map((track) => track.normalized).join(" ")}`;
+    matches = includesEvery(allText, tokens);
+  }
+
+  if (!matches) return null;
+
+  const normalizedQuery = normalizeSearchText(query.replace(",", " "));
+  let score = 10;
+  if (title === normalizedQuery) score += 100;
+  if (artist === normalizedQuery) score += 80;
+  if (title.startsWith(normalizedQuery)) score += 40;
+  if (artist.startsWith(normalizedQuery)) score += 30;
+
+  const trackNeedle = normalizeSearchText(
+    commaIndex !== -1 ? query.slice(commaIndex + 1) : query
+  );
+  const matchingTrack = trackNeedle
+    ? tracks.find((track) => track.normalized.includes(trackNeedle))
+    : null;
+  if (matchingTrack) score += 20;
+
+  return { score, matchingTrack: matchingTrack?.title || "" };
+}
+
+export function searchLocalLibrary(query, limit = 50) {
+  if (!selectedLibrary) return [];
+
+  return selectedLibrary
+    .map((album) => ({ album, match: scoreLocalAlbum(album, String(query || "").trim()) }))
+    .filter((item) => item.match && item.album.album_mbid)
+    .sort((a, b) => b.match.score - a.match.score)
+    .slice(0, limit)
+    .map(({ album, match }) => {
+      const artist = String(album.artist_name || "Unknown artist");
+      const title = String(album.album_name || "Untitled album");
+      const trackCount = album.tracks.length;
+      const matchedTrack = match.matchingTrack ? ` · Track: ${match.matchingTrack}` : "";
+
+      return {
+        mbid: album.album_mbid,
+        title: `${artist} — ${title}`,
+        sub: `Local library · ${trackCount} tracks${matchedTrack}`,
+        source: "local",
+      };
+    });
+}
+
 export function bindLocalLibraryPicker(root = document) {
   const button = root.getElementById("openMusicFolder");
   const input = root.getElementById("musicFolderInput");
