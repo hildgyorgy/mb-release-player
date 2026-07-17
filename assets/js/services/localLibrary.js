@@ -77,6 +77,41 @@ function renderStatus(status) {
   status.classList.toggle("err", !!libraryError);
 }
 
+function renderLibraryList(container) {
+  container.replaceChildren();
+
+  if (!selectedLibrary?.length) {
+    container.hidden = true;
+    return;
+  }
+
+  const albums = [...selectedLibrary].sort((a, b) => {
+    const artistOrder = String(a.artist_name || "").localeCompare(
+      String(b.artist_name || ""),
+      undefined,
+      { sensitivity: "base" }
+    );
+    if (artistOrder) return artistOrder;
+    return String(a.album_name || "").localeCompare(
+      String(b.album_name || ""),
+      undefined,
+      { sensitivity: "base" }
+    );
+  });
+
+  const list = document.createElement("ul");
+  for (const album of albums) {
+    const item = document.createElement("li");
+    const artist = String(album.artist_name || "Unknown artist");
+    const title = String(album.album_name || "Untitled album");
+    item.textContent = `${artist} : ${title}`;
+    list.appendChild(item);
+  }
+
+  container.appendChild(list);
+  container.hidden = false;
+}
+
 export function getLocalFile(relativePath) {
   return selectedFilesByPath.get(String(relativePath || "")) || null;
 }
@@ -176,10 +211,12 @@ export function bindLocalLibraryPicker(root = document) {
   const button = root.getElementById("openMusicFolder");
   const input = root.getElementById("musicFolderInput");
   const status = root.getElementById("musicFolderStatus");
+  const list = root.getElementById("localLibraryList");
 
-  if (!button || !input || !status || button.dataset.bound === "1") return;
+  if (!button || !input || !status || !list || button.dataset.bound === "1") return;
   button.dataset.bound = "1";
   renderStatus(status);
+  renderLibraryList(list);
 
   button.addEventListener("click", () => input.click());
 
@@ -197,5 +234,6 @@ export function bindLocalLibraryPicker(root = document) {
     }
 
     renderStatus(status);
+    renderLibraryList(list);
   });
 }
