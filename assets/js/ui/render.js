@@ -242,12 +242,12 @@ function renderRow(row) {
     : `<div class="trk-title">${escHtml(row.title)}</div>`;
 
   return `
-    <tr class="track" data-i="${row.recId}" data-rec="${row.recId}">
+    <tr class="track" data-i="${escAttr(row.index)}" data-rec="${escAttr(row.recId)}">
       <td class="num">${row.pos ?? ""}</td>
       <td class="title">${titleHtml}</td>
       <td class="len">${escHtml(row.len)}</td>
     </tr>
-    <tr class="details" data-i="${row.recId}">
+    <tr class="details" data-i="${escAttr(row.index)}">
       <td></td>
       <td colspan="2">
         <div class="details-wrap">

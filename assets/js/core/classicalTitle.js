@@ -36,7 +36,7 @@ export function splitClassicalTitle(titleRaw) {
 
 /**
  * @typedef {{ type: "work",     work: string }} WorkRow
- * @typedef {{ type: "track",    pos: number|null, title: string, len: string, recId: string, isMovement: boolean }} TrackRow
+ * @typedef {{ type: "track",    index: number, pos: number|null, title: string, len: string, recId: string, isMovement: boolean }} TrackRow
  * @typedef {WorkRow | TrackRow} DisplayRow
  */
 
@@ -49,7 +49,7 @@ export function splitClassicalTitle(titleRaw) {
  *      consecutively ≥2 times within the medium → also a classical group
  *   3. Anything else → plain track row, no work header
  *
- * @param {Array<{title: string, pos: number|null, len: string, rec: {id:string}|null}>} tracks
+ * @param {Array<{_i: number, title: string, pos: number|null, len: string, rec: {id:string}|null}>} tracks
  * @returns {DisplayRow[]}
  */
 export function buildTrackRows(tracks) {
@@ -88,6 +88,7 @@ export function buildTrackRows(tracks) {
 
     rows.push({
       type: "track",
+      index: p.track._i,
       pos: p.track.pos ?? null,
       title: isClassicalGroup && mov ? mov : p.rawTitle,
       len: p.track.len || "",

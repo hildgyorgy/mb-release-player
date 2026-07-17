@@ -11,6 +11,7 @@ import { loadRelease, loadFirstReleaseOfGroup } from "./services/api.js";
 import { renderReleasePage } from "./features/releasePage.js";
 
 import { createMobileHeaderController } from "./ui/mobileHeader.js";
+import { bindLocalLibraryPicker } from "./services/localLibrary.js";
 
 // ------------------------------
 // Loading / navigation
@@ -29,6 +30,12 @@ export const App = Object.freeze({
     bindThemeToggleOnce(document);
 
     const emptyStateHtml = document.getElementById("emptyState")?.outerHTML || "";
+
+    const bindHomeActions = () => {
+      bindLocalLibraryPicker(document);
+    };
+
+    bindHomeActions();
 
     const Nav = createReleaseNavigator({
       getOut: () => document.getElementById("out"),
@@ -79,6 +86,7 @@ homeLink?.addEventListener("click", () => {
 
   if (out) {
     out.innerHTML = emptyStateHtml;
+    bindHomeActions();
   }
 
   if (omni) {
