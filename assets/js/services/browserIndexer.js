@@ -158,6 +158,18 @@ async function findChildPayload(file, start, end, wantedType) {
   return null;
 }
 
+async function listChildBoxes(file, start, end) {
+  const boxes = [];
+  let position = start;
+  while (position + 8 <= end) {
+    const box = await readMp4Box(file, position, end);
+    if (!box) break;
+    boxes.push(box);
+    position = box.next;
+  }
+  return boxes;
+}
+
 function decodeMp4Data(payload) {
   return payload?.length >= 8 ? decodeUtf8(payload.subarray(8)) : null;
 }
@@ -189,8 +201,13 @@ async function readM4aTags(file) {
       const payload = await findChildPayload(file, atom.start, atom.end, "data");
       addTag(tags, textAtoms.get(atom.type), decodeMp4Data(payload));
     } else if (atom.type === "----") {
-      const namePayload = await findChildPayload(file, atom.start, atom.end, "name");
-      const dataPayload = await findChildPayload(file, atom.start, atom.end, "data");
+      const children = await listChildBoxes(file, atom.start, atom.end);
+      const nameBox = children.find((box) => box.type === "name");
+      const dataBox = children.find((box) => box.type === "data");
+      const [namePayload, dataPayload] = await Promise.all([
+        nameBox ? readBytes(file, nameBox.start, nameBox.end - nameBox.start) : null,
+        dataBox ? readBytes(file, dataBox.start, dataBox.end - dataBox.start) : null,
+      ]);
       if (namePayload?.length >= 4) {
         addTag(tags, decodeUtf8(namePayload.subarray(4)), decodeMp4Data(dataPayload));
       }
@@ -222,17 +239,44 @@ function fallbackAlbumNames(folderPath) {
   };
 }
 
+async function mapWithConcurrency(items, concurrency, mapper) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+      results[index] = await mapper(items[index], index);
+    }
+  }
+
+  const workerCount = Math.min(Math.max(1, concurrency), items.length || 1);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
 export async function buildLibraryIndex(filesByPath, onProgress = () => {}) {
   const startedAt = performance.now();
   const audioEntries = [...filesByPath.entries()]
     .filter(([, file]) => isAudioFile(file.name))
     .sort(([pathA], [pathB]) => pathA.localeCompare(pathB));
-  const folders = new Map();
+  let completed = 0;
+  const concurrency = Math.min(8, Math.max(4, navigator.hardwareConcurrency || 4));
+  const indexedFiles = await mapWithConcurrency(
+    audioEntries,
+    concurrency,
+    async ([relativePath, file]) => {
+      const metadata = await readMetadata(file);
+      completed += 1;
+      onProgress(completed, audioEntries.length, relativePath);
+      return { relativePath, metadata };
+    }
+  );
 
-  for (let index = 0; index < audioEntries.length; index += 1) {
-    const [relativePath, file] = audioEntries[index];
-    onProgress(index + 1, audioEntries.length, relativePath);
-    const metadata = await readMetadata(file);
+  const folders = new Map();
+  for (const { relativePath, metadata } of indexedFiles) {
     const folderPath = folderOf(relativePath);
     if (!folders.has(folderPath)) folders.set(folderPath, []);
     folders.get(folderPath).push(metadata);
