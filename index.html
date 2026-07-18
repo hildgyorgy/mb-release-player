@@ -76,10 +76,16 @@
             </div>
 
             <div class="local-library-start">
-              <button class="local-library-button pill" id="openMusicFolder" type="button">
-                Connect Music Folder
-              </button>
+              <div class="local-library-actions">
+                <button class="local-library-button pill" id="openMusicFolder" type="button">
+                  Connect Music Folder
+                </button>
+                <button class="local-library-button pill" id="createLibraryIndex" type="button">
+                  Create Library Index
+                </button>
+              </div>
               <input id="musicFolderInput" type="file" webkitdirectory multiple hidden>
+              <input id="indexMusicFolderInput" type="file" webkitdirectory multiple hidden>
               <p class="local-library-status muted" id="musicFolderStatus" role="status" aria-live="polite">
                 No local music folder selected.
               </p>

@@ -1,0 +1,318 @@
+const SUPPORTED_EXTENSIONS = [".flac", ".m4a"];
+
+function extensionOf(name) {
+  const dot = String(name || "").lastIndexOf(".");
+  return dot === -1 ? "" : name.slice(dot).toLowerCase();
+}
+
+function isAudioFile(name) {
+  return SUPPORTED_EXTENSIONS.includes(extensionOf(name));
+}
+
+function decodeUtf8(bytes) {
+  return new TextDecoder("utf-8").decode(bytes).replace(/\0+$/, "");
+}
+
+function decodeBoxType(bytes) {
+  return String.fromCharCode(...bytes);
+}
+
+function first(tags, ...names) {
+  for (const name of names) {
+    const values = tags.get(name.toLowerCase());
+    if (values?.length) return values[0];
+  }
+  return null;
+}
+
+function addTag(tags, name, value) {
+  if (!value) return;
+  const key = name.toLowerCase();
+  if (!tags.has(key)) tags.set(key, []);
+  tags.get(key).push(value);
+}
+
+function metadataFromTags(file, tags) {
+  const date = first(tags, "date", "©day");
+  return {
+    filename: file.name,
+    title: first(tags, "title", "©nam") || file.name.replace(/\.[^.]+$/, ""),
+    track_mbid: first(tags, "musicbrainz_trackid", "musicbrainz track id"),
+    album_mbid: first(tags, "musicbrainz_albumid", "musicbrainz album id"),
+    album_name: first(tags, "album", "©alb"),
+    artist_name: first(tags, "albumartist", "aart", "artist", "©art"),
+    release_year: date ? date.slice(0, 4) : null,
+    country: first(tags, "releasecountry", "musicbrainz album release country"),
+    label: first(tags, "label", "organization"),
+    media_format: first(tags, "media"),
+  };
+}
+
+async function readBytes(file, start, length) {
+  const bytes = new Uint8Array(await file.slice(start, start + length).arrayBuffer());
+  if (bytes.length !== length) throw new Error("The file ended unexpectedly.");
+  return bytes;
+}
+
+function uint32be(bytes, offset = 0) {
+  return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(offset);
+}
+
+function uint32le(bytes, offset = 0) {
+  return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(offset, true);
+}
+
+function uint64be(bytes, offset = 0) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const value = (BigInt(view.getUint32(offset)) << 32n) | BigInt(view.getUint32(offset + 4));
+  if (value > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("MP4 box is too large.");
+  return Number(value);
+}
+
+async function readFlacTags(file) {
+  const signature = decodeUtf8(await readBytes(file, 0, 4));
+  if (signature !== "fLaC") throw new Error("Not a valid FLAC file.");
+
+  const tags = new Map();
+  let position = 4;
+  let isLast = false;
+
+  while (!isLast) {
+    const header = await readBytes(file, position, 4);
+    position += 4;
+    isLast = Boolean(header[0] & 0x80);
+    const blockType = header[0] & 0x7f;
+    const blockSize = (header[1] << 16) | (header[2] << 8) | header[3];
+
+    if (blockType !== 4) {
+      // Includes PICTURE (type 6): advance by size without reading its bytes.
+      position += blockSize;
+      continue;
+    }
+
+    const block = await readBytes(file, position, blockSize);
+    let offset = 0;
+    const vendorSize = uint32le(block, offset);
+    offset += 4 + vendorSize;
+    const commentCount = uint32le(block, offset);
+    offset += 4;
+
+    for (let index = 0; index < commentCount; index += 1) {
+      const commentSize = uint32le(block, offset);
+      offset += 4;
+      const comment = decodeUtf8(block.subarray(offset, offset + commentSize));
+      offset += commentSize;
+      const equals = comment.indexOf("=");
+      if (equals > 0) addTag(tags, comment.slice(0, equals), comment.slice(equals + 1));
+    }
+    position += blockSize;
+  }
+
+  return tags;
+}
+
+async function readMp4Box(file, position, end) {
+  if (position + 8 > end) return null;
+  const header = await readBytes(file, position, 8);
+  const size32 = uint32be(header);
+  const type = decodeBoxType(header.subarray(4, 8));
+  let headerSize = 8;
+  let size = size32;
+
+  if (size32 === 1) {
+    size = uint64be(await readBytes(file, position + 8, 8));
+    headerSize = 16;
+  } else if (size32 === 0) {
+    size = end - position;
+  }
+
+  if (size < headerSize || position + size > end) {
+    throw new Error("Invalid MP4 box structure.");
+  }
+  return { type, start: position + headerSize, end: position + size, next: position + size };
+}
+
+async function findIlst(file, start = 0, end = file.size, containerType = "") {
+  let position = containerType === "meta" ? start + 4 : start;
+  while (position + 8 <= end) {
+    const box = await readMp4Box(file, position, end);
+    if (!box) break;
+    if (box.type === "ilst") return box;
+    if (["moov", "udta", "meta"].includes(box.type)) {
+      const found = await findIlst(file, box.start, box.end, box.type);
+      if (found) return found;
+    }
+    position = box.next;
+  }
+  return null;
+}
+
+async function findChildPayload(file, start, end, wantedType) {
+  let position = start;
+  while (position + 8 <= end) {
+    const box = await readMp4Box(file, position, end);
+    if (!box) break;
+    if (box.type === wantedType) return readBytes(file, box.start, box.end - box.start);
+    position = box.next;
+  }
+  return null;
+}
+
+function decodeMp4Data(payload) {
+  return payload?.length >= 8 ? decodeUtf8(payload.subarray(8)) : null;
+}
+
+async function readM4aTags(file) {
+  const tags = new Map();
+  const ilst = await findIlst(file);
+  if (!ilst) return tags;
+
+  const textAtoms = new Map([
+    ["©nam", "©nam"],
+    ["©alb", "©alb"],
+    ["aART", "aart"],
+    ["©ART", "©art"],
+    ["©day", "©day"],
+  ]);
+
+  let position = ilst.start;
+  while (position + 8 <= ilst.end) {
+    const atom = await readMp4Box(file, position, ilst.end);
+    if (!atom) break;
+
+    if (atom.type === "covr") {
+      position = atom.next;
+      continue;
+    }
+
+    if (textAtoms.has(atom.type)) {
+      const payload = await findChildPayload(file, atom.start, atom.end, "data");
+      addTag(tags, textAtoms.get(atom.type), decodeMp4Data(payload));
+    } else if (atom.type === "----") {
+      const namePayload = await findChildPayload(file, atom.start, atom.end, "name");
+      const dataPayload = await findChildPayload(file, atom.start, atom.end, "data");
+      if (namePayload?.length >= 4) {
+        addTag(tags, decodeUtf8(namePayload.subarray(4)), decodeMp4Data(dataPayload));
+      }
+    }
+    position = atom.next;
+  }
+
+  return tags;
+}
+
+async function readMetadata(file) {
+  const extension = extensionOf(file.name);
+  const tags = extension === ".flac"
+    ? await readFlacTags(file)
+    : await readM4aTags(file);
+  return metadataFromTags(file, tags);
+}
+
+function folderOf(path) {
+  const slash = path.lastIndexOf("/");
+  return slash === -1 ? "." : path.slice(0, slash);
+}
+
+function fallbackAlbumNames(folderPath) {
+  const parts = folderPath.split("/").filter((part) => part && part !== ".");
+  return {
+    album: parts.at(-1) || "Unknown album",
+    artist: parts.at(-2) || "Unknown artist",
+  };
+}
+
+export async function buildLibraryIndex(filesByPath, onProgress = () => {}) {
+  const startedAt = performance.now();
+  const audioEntries = [...filesByPath.entries()]
+    .filter(([, file]) => isAudioFile(file.name))
+    .sort(([pathA], [pathB]) => pathA.localeCompare(pathB));
+  const folders = new Map();
+
+  for (let index = 0; index < audioEntries.length; index += 1) {
+    const [relativePath, file] = audioEntries[index];
+    onProgress(index + 1, audioEntries.length, relativePath);
+    const metadata = await readMetadata(file);
+    const folderPath = folderOf(relativePath);
+    if (!folders.has(folderPath)) folders.set(folderPath, []);
+    folders.get(folderPath).push(metadata);
+  }
+
+  const library = [];
+  const warnings = [];
+  for (const [folderPath, tracks] of folders) {
+    const album = tracks[0];
+    if (!album.album_mbid) {
+      warnings.push(`Skipped (Release MBID is missing): ${folderPath}`);
+      continue;
+    }
+    const fallback = fallbackAlbumNames(folderPath);
+    library.push({
+      album_name: album.album_name || fallback.album,
+      artist_name: album.artist_name || fallback.artist,
+      album_mbid: album.album_mbid,
+      release_year: album.release_year,
+      country: album.country,
+      label: album.label,
+      media_format: album.media_format,
+      folder_path: folderPath,
+      tracks: tracks.map(({ filename, title, track_mbid }) => ({ filename, title, track_mbid })),
+    });
+  }
+
+  return {
+    library,
+    warnings,
+    audioFileCount: audioEntries.length,
+    elapsedSeconds: (performance.now() - startedAt) / 1000,
+  };
+}
+
+async function collectDirectoryHandle(directoryHandle) {
+  const files = new Map();
+  async function walk(handle, prefix = "") {
+    for await (const [name, entry] of handle.entries()) {
+      const path = prefix ? `${prefix}/${name}` : name;
+      if (entry.kind === "directory") await walk(entry, path);
+      else files.set(path, await entry.getFile());
+    }
+  }
+  await walk(directoryHandle);
+  return files;
+}
+
+export async function chooseWritableMusicFolder() {
+  if (typeof window.showDirectoryPicker !== "function") return null;
+  const directoryHandle = await window.showDirectoryPicker({
+    id: "mb-release-player-music",
+    mode: "readwrite",
+    startIn: "music",
+  });
+  return { directoryHandle, filesByPath: await collectDirectoryHandle(directoryHandle) };
+}
+
+export function collectInputFiles(fileList) {
+  const files = new Map();
+  for (const file of Array.from(fileList || [])) {
+    const parts = String(file.webkitRelativePath || file.name).split("/").filter(Boolean);
+    const relativePath = parts.length > 1 ? parts.slice(1).join("/") : parts.join("/");
+    if (relativePath) files.set(relativePath, file);
+  }
+  return files;
+}
+
+export async function saveIndexToDirectory(directoryHandle, json) {
+  const fileHandle = await directoryHandle.getFileHandle("library.json", { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(json);
+  await writable.close();
+}
+
+export function downloadIndex(json) {
+  const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "library.json";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

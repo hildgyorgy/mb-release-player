@@ -2,6 +2,14 @@
    Local library: user-approved folder access and file registry
    ============================================================ */
 
+import {
+  buildLibraryIndex,
+  chooseWritableMusicFolder,
+  collectInputFiles,
+  downloadIndex,
+  saveIndexToDirectory,
+} from "./browserIndexer.js";
+
 let selectedFilesByPath = new Map();
 let selectedLibrary = null;
 let libraryError = "";
@@ -29,6 +37,11 @@ function storeSelectedFiles(fileList) {
   }
 
   selectedFilesByPath = next;
+  return selectedFilesByPath.size;
+}
+
+function storeSelectedFileMap(filesByPath) {
+  selectedFilesByPath = new Map(filesByPath || []);
   return selectedFilesByPath.size;
 }
 
@@ -262,11 +275,13 @@ export function searchLocalLibrary(query, limit = 50) {
 
 export function bindLocalLibraryPicker(root = document) {
   const button = root.getElementById("openMusicFolder");
+  const indexButton = root.getElementById("createLibraryIndex");
   const input = root.getElementById("musicFolderInput");
+  const indexInput = root.getElementById("indexMusicFolderInput");
   const status = root.getElementById("musicFolderStatus");
   const list = root.getElementById("localLibraryList");
 
-  if (!button || !input || !status || !list || button.dataset.bound === "1") return;
+  if (!button || !indexButton || !input || !indexInput || !status || !list || button.dataset.bound === "1") return;
   button.dataset.bound = "1";
   renderStatus(status);
   renderLibraryList(list);
@@ -291,5 +306,68 @@ export function bindLocalLibraryPicker(root = document) {
 
     renderStatus(status);
     renderLibraryList(list);
+  });
+
+  async function createIndex(filesByPath, directoryHandle = null) {
+    libraryError = "";
+    status.classList.remove("err");
+    indexButton.disabled = true;
+
+    try {
+      const result = await buildLibraryIndex(filesByPath, (current, total) => {
+        status.textContent = `Indexing ${current.toLocaleString()} of ${total.toLocaleString()} audio files…`;
+      });
+      const json = `${JSON.stringify(result.library, null, 4)}\n`;
+      const summary = `${result.library.length.toLocaleString()} albums and ${result.audioFileCount.toLocaleString()} audio files indexed in ${result.elapsedSeconds.toFixed(2)} seconds.`;
+      const approved = window.confirm(`${summary}\n\nSave library.json now?`);
+
+      if (!approved) {
+        status.textContent = `Index created but not saved. ${summary}`;
+        return;
+      }
+
+      if (directoryHandle) {
+        await saveIndexToDirectory(directoryHandle, json);
+        status.textContent = `library.json saved in the selected Music folder. ${summary}`;
+      } else {
+        downloadIndex(json);
+        status.textContent = `library.json downloaded. Move or save it into the selected Music folder. ${summary}`;
+      }
+
+      storeSelectedFileMap(filesByPath);
+      selectedLibrary = validateLibrary(result.library);
+      rebuildLocalIndex();
+      renderLibraryList(list);
+      if (result.warnings.length) console.warn("Library index warnings:", result.warnings);
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+      libraryError = error?.message || "Could not create library.json.";
+      renderStatus(status);
+    } finally {
+      indexButton.disabled = false;
+      indexInput.value = "";
+    }
+  }
+
+  indexButton.addEventListener("click", async () => {
+    if (typeof window.showDirectoryPicker !== "function") {
+      indexInput.click();
+      return;
+    }
+    try {
+      const selection = await chooseWritableMusicFolder();
+      if (selection) await createIndex(selection.filesByPath, selection.directoryHandle);
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        libraryError = error?.message || "Could not open the Music folder.";
+        renderStatus(status);
+      }
+    }
+  });
+
+  indexInput.addEventListener("change", async () => {
+    if (indexInput.files?.length) {
+      await createIndex(collectInputFiles(indexInput.files));
+    }
   });
 }

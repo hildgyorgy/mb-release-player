@@ -441,6 +441,12 @@ a:hover {
   font-weight: 600;
 }
 
+.local-library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .local-library-status {
   margin: 10px 0 0;
   font-size: 12px;
