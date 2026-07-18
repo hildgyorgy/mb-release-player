@@ -106,7 +106,7 @@ function statusText() {
   if (!selectedLibrary) return "No local music folder selected.";
 
   const { albumCount, trackCount } = summarizeLibrary(selectedLibrary);
-  return `Library loaded: ${albumCount.toLocaleString()} albums, ${trackCount.toLocaleString()} tracks · ${selectedFilesByPath.size.toLocaleString()} files available.`;
+  return `Connected: ${albumCount.toLocaleString()} albums, ${trackCount.toLocaleString()} tracks · ${selectedFilesByPath.size.toLocaleString()} files available for playing.`;
 }
 
 function renderStatus(status) {
