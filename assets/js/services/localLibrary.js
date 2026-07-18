@@ -201,7 +201,7 @@ export function searchLocalLibrary(query, limit = 50) {
       return {
         mbid: album.album_mbid,
         title: `${artist} — ${title}`,
-        sub: `Local library · ${trackCount} tracks${matchedTrack}`,
+        sub: `${trackCount} tracks${matchedTrack}`,
         source: "local",
       };
     });

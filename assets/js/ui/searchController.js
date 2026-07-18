@@ -8,8 +8,9 @@ const $ = (id) => document.getElementById(id);
 let searchClickOutsideBound = false;
 
 function renderResultItem(it, i, isActive) {
+  const isLocal = it.source === "local";
   return `
-    <div class="result ${isActive ? "is-active" : ""}" data-i="${escAttr(i)}">
+    <div class="result ${isLocal ? "is-local" : ""} ${isActive ? "is-active" : ""}" data-i="${escAttr(i)}">
       <img
         class="res-thumb"
         src="${escAttr(`https://coverartarchive.org/release/${it.mbid}/front-250`)}"
@@ -19,7 +20,10 @@ function renderResultItem(it, i, isActive) {
         onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'res-thumb is-empty',ariaHidden:'true'}));"
       />
       <div class="res-text">
-        <div class="res-title">${escHtml(it.title)}</div>
+        <div class="res-title">
+          ${isLocal ? `<span class="res-local-play" aria-hidden="true"></span>` : ""}
+          <span>${escHtml(it.title)}</span>
+        </div>
         <div class="sub">${escHtml(it.sub || "")}</div>
       </div>
     </div>
