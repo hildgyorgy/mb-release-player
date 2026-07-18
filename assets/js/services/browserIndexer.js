@@ -352,6 +352,22 @@ export async function saveIndexToDirectory(directoryHandle, json) {
   await writable.close();
 }
 
+export async function saveIndexWithFilePicker(json) {
+  if (typeof window.showSaveFilePicker !== "function") return false;
+  const fileHandle = await window.showSaveFilePicker({
+    id: "mb-release-player-library-index",
+    suggestedName: "library.json",
+    types: [{
+      description: "MusicBrainz Release Player library index",
+      accept: { "application/json": [".json"] },
+    }],
+  });
+  const writable = await fileHandle.createWritable();
+  await writable.write(json);
+  await writable.close();
+  return true;
+}
+
 export function downloadIndex(json) {
   const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
   const link = document.createElement("a");

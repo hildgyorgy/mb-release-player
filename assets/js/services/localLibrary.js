@@ -8,6 +8,7 @@ import {
   collectInputFiles,
   downloadIndex,
   saveIndexToDirectory,
+  saveIndexWithFilePicker,
 } from "./browserIndexer.js";
 
 let selectedFilesByPath = new Map();
@@ -330,8 +331,13 @@ export function bindLocalLibraryPicker(root = document) {
         await saveIndexToDirectory(directoryHandle, json);
         status.textContent = `library.json saved in the selected Music folder. ${summary}`;
       } else {
-        downloadIndex(json);
-        status.textContent = `library.json downloaded. Move or save it into the selected Music folder. ${summary}`;
+        const savedWithPicker = await saveIndexWithFilePicker(json);
+        if (savedWithPicker) {
+          status.textContent = `library.json saved. Keep it in the selected Music folder. ${summary}`;
+        } else {
+          downloadIndex(json);
+          status.textContent = `library.json downloaded. Place it in the selected Music folder. ${summary}`;
+        }
       }
 
       storeSelectedFileMap(filesByPath);
