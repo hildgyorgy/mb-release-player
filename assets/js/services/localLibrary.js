@@ -116,7 +116,7 @@ async function loadLibraryJson() {
 
 function statusText() {
   if (libraryError) return libraryError;
-  if (!selectedLibrary) return "No local music folder selected.";
+  if (!selectedLibrary) return "Your Music folder is not connected.";
 
   const { albumCount, trackCount } = summarizeLibrary(selectedLibrary);
   return `Connected: ${albumCount.toLocaleString()} albums, ${trackCount.toLocaleString()} tracks · ${selectedFilesByPath.size.toLocaleString()} files available for playing.`;
