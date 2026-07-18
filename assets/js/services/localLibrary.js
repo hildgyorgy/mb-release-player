@@ -5,6 +5,12 @@
 let selectedFilesByPath = new Map();
 let selectedLibrary = null;
 let libraryError = "";
+let localAlbumsByMbid = new Map();
+let localTracksByRelease = new Map();
+
+function mbidKey(value) {
+  return String(value || "").trim().toLowerCase();
+}
 
 function normalizeRelativePath(file) {
   const raw = String(file?.webkitRelativePath || file?.name || "");
@@ -24,6 +30,37 @@ function storeSelectedFiles(fileList) {
 
   selectedFilesByPath = next;
   return selectedFilesByPath.size;
+}
+
+function rebuildLocalIndex() {
+  localAlbumsByMbid = new Map();
+  localTracksByRelease = new Map();
+
+  for (const album of selectedLibrary || []) {
+    const releaseKey = mbidKey(album.album_mbid);
+    if (!releaseKey) continue;
+
+    localAlbumsByMbid.set(releaseKey, album);
+    const tracksByRecording = new Map();
+
+    for (const track of album.tracks || []) {
+      const recordingKey = mbidKey(track.track_mbid);
+      if (!recordingKey || tracksByRecording.has(recordingKey)) continue;
+
+      const relativePath = [album.folder_path, track.filename]
+        .filter(Boolean)
+        .join("/");
+
+      tracksByRecording.set(recordingKey, {
+        album,
+        track,
+        relativePath,
+        file: getLocalFile(relativePath),
+      });
+    }
+
+    localTracksByRelease.set(releaseKey, tracksByRecording);
+  }
 }
 
 function summarizeLibrary(albums) {
@@ -118,6 +155,18 @@ export function getLocalFile(relativePath) {
 
 export function getLocalLibrary() {
   return selectedLibrary;
+}
+
+export function getLocalAlbum(releaseMbid) {
+  return localAlbumsByMbid.get(mbidKey(releaseMbid)) || null;
+}
+
+export function getLocalTrack(releaseMbid, recordingMbid) {
+  return (
+    localTracksByRelease
+      .get(mbidKey(releaseMbid))
+      ?.get(mbidKey(recordingMbid)) || null
+  );
 }
 
 function normalizeSearchText(value) {
@@ -227,13 +276,16 @@ export function bindLocalLibraryPicker(root = document) {
   input.addEventListener("change", async () => {
     storeSelectedFiles(input.files);
     selectedLibrary = null;
+    rebuildLocalIndex();
     libraryError = "";
     status.classList.remove("err");
     status.textContent = "Reading library.json…";
 
     try {
       selectedLibrary = await loadLibraryJson();
+      rebuildLocalIndex();
     } catch (error) {
+      rebuildLocalIndex();
       libraryError = error?.message || "Could not read library.json.";
     }
 

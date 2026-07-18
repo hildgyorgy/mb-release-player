@@ -240,10 +240,16 @@ function renderRow(row) {
   const titleHtml = row.isMovement
     ? `<div class="trk-mov">${escHtml(row.title)}</div>`
     : `<div class="trk-title">${escHtml(row.title)}</div>`;
+  const numberHtml = row.isLocal
+    ? `<span class="track-number">${row.pos ?? ""}</span>
+       <button class="track-play" type="button" data-play-track="${escAttr(row.index)}" aria-label="Play track" title="Play">
+         <span class="track-play-glyph" aria-hidden="true"></span>
+       </button>`
+    : row.pos ?? "";
 
   return `
-    <tr class="track" data-i="${escAttr(row.index)}" data-rec="${escAttr(row.recId)}">
-      <td class="num">${row.pos ?? ""}</td>
+    <tr class="track${row.isLocal ? " is-local" : ""}" data-i="${escAttr(row.index)}" data-rec="${escAttr(row.recId)}" data-local="${row.isLocal ? "1" : "0"}">
+      <td class="num">${numberHtml}</td>
       <td class="title">${titleHtml}</td>
       <td class="len">${escHtml(row.len)}</td>
     </tr>

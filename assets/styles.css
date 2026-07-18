@@ -914,9 +914,79 @@ td {
 }
 
 td.num {
+  position: relative;
   width: 42px;
   opacity: .7;
   font-variant-numeric: tabular-nums;
+}
+
+.track-play {
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.track-play:hover {
+  opacity: 1;
+}
+
+.track-play-glyph {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid currentColor;
+}
+
+.track-play.is-playing .track-play-glyph {
+  width: 9px;
+  height: 10px;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+}
+
+tr.track.is-local:hover .track-number,
+tr.track.is-local:focus-within .track-number,
+tr.track.is-local.is-current .track-number {
+  display: none;
+}
+
+tr.track.is-local:hover .track-play,
+tr.track.is-local:focus-within .track-play,
+tr.track.is-local.is-current .track-play {
+  opacity: .85;
+  pointer-events: auto;
+}
+
+tr.track.is-local .track-play:hover {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  tr.track.is-local .track-number {
+    display: none;
+  }
+
+  tr.track.is-local .track-play {
+    opacity: .85;
+    pointer-events: auto;
+  }
 }
 
 td.len {

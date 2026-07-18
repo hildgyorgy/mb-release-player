@@ -20,6 +20,8 @@ import { bindTabsOnce, setActiveView } from "../ui/tabs.js";
 import { buildVersionsView } from "./versions.js";
 import { bindTrackToggles } from "./tracks.js";
 import { bindComposerHeadersOnce } from "../ui/composerHeaders.js";
+import { getLocalAlbum, getLocalTrack } from "../services/localLibrary.js";
+import { bindTrackPlayback } from "./player.js";
 
 // ------------------------------------------------------------
 // Streaming links (moved to module level from Fix 4)
@@ -92,6 +94,7 @@ function hydrateUI(out, flatTracks, onLoadRelease, onNavigateToRelease) {
 
   // Track toggles — pass onLoadRelease so artist panel can navigate
   bindTrackToggles(out, flatTracks, onLoadRelease);
+  bindTrackPlayback(out, flatTracks);
 
   bindComposerHeadersOnce(out);
 
@@ -138,14 +141,24 @@ export function renderReleasePage(out, { rel, cover, covers }, onLoadRelease, on
   // Build flat track list for toggle binding
   const media = rel.media || [];
   const flatTracks = [];
+  const localAlbum = getLocalAlbum(rel.id);
+  let localTrackCount = 0;
 
   const mediaWithTracks = media.map((m, mi) => {
     const mt = (m.tracks || []).map((t) => {
+      const localTrack = localAlbum
+        ? getLocalTrack(rel.id, t.recording?.id)
+        : null;
+      const isLocal = !!localTrack?.file;
+      if (isLocal) localTrackCount += 1;
+
       const obj = {
         pos: t.position,
         title: t.title,
         len: fmtMs(t.length),
         rec: t.recording,
+        isLocal,
+        localTrack,
         _i: flatTracks.length,
       };
       flatTracks.push(obj);
@@ -167,6 +180,8 @@ export function renderReleasePage(out, { rel, cover, covers }, onLoadRelease, on
     versionsBuilt: false,
     releaseGroupId,
     currentReleaseId: rel.id || "",
+    localRelease: !!localAlbum,
+    localTrackCount,
   });
 
   out.innerHTML = `
