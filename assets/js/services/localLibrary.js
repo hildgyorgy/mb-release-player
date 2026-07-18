@@ -192,16 +192,20 @@ export function searchLocalLibrary(query, limit = 50) {
     .filter((item) => item.match && item.album.album_mbid)
     .sort((a, b) => b.match.score - a.match.score)
     .slice(0, limit)
-    .map(({ album, match }) => {
+    .map(({ album }) => {
       const artist = String(album.artist_name || "Unknown artist");
       const title = String(album.album_name || "Untitled album");
-      const trackCount = album.tracks.length;
-      const matchedTrack = match.matchingTrack ? ` · Track: ${match.matchingTrack}` : "";
+      const metadata = [
+        album.release_year,
+        album.country,
+        album.label,
+        album.media_format,
+      ].filter(Boolean);
 
       return {
         mbid: album.album_mbid,
         title: `${artist} — ${title}`,
-        sub: `${trackCount} tracks${matchedTrack}`,
+        sub: metadata.join(" · "),
         source: "local",
       };
     });

@@ -116,8 +116,15 @@ export function createSearchController({ onGoByMbid, onGoFallback }) {
       const remoteItems = await searchReleases(val, CONFIG.SEARCH_LIMIT);
       if (requestId !== STATE.search.req) return;
 
-      const seen = new Set(localItems.map((item) => item.mbid));
-      const merged = localItems.concat(remoteItems.filter((item) => !seen.has(item.mbid)));
+      const remoteByMbid = new Map(remoteItems.map((item) => [item.mbid, item]));
+      const enrichedLocalItems = localItems.map((item) => ({
+        ...item,
+        sub: item.sub || remoteByMbid.get(item.mbid)?.sub || "",
+      }));
+      const seen = new Set(enrichedLocalItems.map((item) => item.mbid));
+      const merged = enrichedLocalItems.concat(
+        remoteItems.filter((item) => !seen.has(item.mbid))
+      );
       renderSearchResults(merged.slice(0, CONFIG.SEARCH_LIMIT));
     } catch {
       if (requestId !== STATE.search.req) return;
