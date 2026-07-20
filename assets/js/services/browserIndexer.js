@@ -74,6 +74,7 @@ async function readFlacTags(file) {
   if (signature !== "fLaC") throw new Error("Not a valid FLAC file.");
 
   const tags = new Map();
+  const technical = { codec: "FLAC", bit_depth: null, sample_rate: null, bitrate: null, channels: null };
   let position = 4;
   let isLast = false;
 
@@ -83,6 +84,19 @@ async function readFlacTags(file) {
     isLast = Boolean(header[0] & 0x80);
     const blockType = header[0] & 0x7f;
     const blockSize = (header[1] << 16) | (header[2] << 8) | header[3];
+
+    if (blockType === 0) {
+      const block = await readBytes(file, position, blockSize);
+      if (block.length >= 18) {
+        let packed = 0n;
+        for (const byte of block.subarray(10, 18)) packed = (packed << 8n) | BigInt(byte);
+        technical.sample_rate = Number((packed >> 44n) & 0xfffffn);
+        technical.channels = Number((packed >> 41n) & 0x7n) + 1;
+        technical.bit_depth = Number((packed >> 36n) & 0x1fn) + 1;
+      }
+      position += blockSize;
+      continue;
+    }
 
     if (blockType !== 4) {
       // Includes PICTURE (type 6): advance by size without reading its bytes.
@@ -108,7 +122,7 @@ async function readFlacTags(file) {
     position += blockSize;
   }
 
-  return tags;
+  return { tags, technical };
 }
 
 async function readMp4Box(file, position, end) {
@@ -170,14 +184,69 @@ async function listChildBoxes(file, start, end) {
   return boxes;
 }
 
+async function findDirectChild(file, start, end, wantedType) {
+  const boxes = await listChildBoxes(file, start, end);
+  return boxes.find((box) => box.type === wantedType) || null;
+}
+
+async function readM4aTechnical(file) {
+  const technical = { codec: null, bit_depth: null, sample_rate: null, bitrate: null, channels: null };
+  const moov = await findDirectChild(file, 0, file.size, "moov");
+  if (!moov) return technical;
+
+  const tracks = (await listChildBoxes(file, moov.start, moov.end))
+    .filter((box) => box.type === "trak");
+
+  for (const track of tracks) {
+    const mdia = await findDirectChild(file, track.start, track.end, "mdia");
+    if (!mdia) continue;
+    const handler = await findDirectChild(file, mdia.start, mdia.end, "hdlr");
+    if (!handler || handler.end - handler.start < 12) continue;
+    const handlerData = await readBytes(file, handler.start, 12);
+    if (decodeBoxType(handlerData.subarray(8, 12)) !== "soun") continue;
+
+    const minf = await findDirectChild(file, mdia.start, mdia.end, "minf");
+    const stbl = minf ? await findDirectChild(file, minf.start, minf.end, "stbl") : null;
+    const stsd = stbl ? await findDirectChild(file, stbl.start, stbl.end, "stsd") : null;
+    if (!stsd || stsd.start + 16 > stsd.end) continue;
+
+    const entry = await readMp4Box(file, stsd.start + 8, stsd.end);
+    if (!entry) continue;
+    technical.codec = entry.type === "alac" ? "ALAC" : entry.type === "mp4a" ? "AAC" : entry.type.toUpperCase();
+
+    const sampleEntry = await readBytes(file, entry.start, Math.min(28, entry.end - entry.start));
+    if (sampleEntry.length >= 28) {
+      technical.channels = new DataView(sampleEntry.buffer, sampleEntry.byteOffset, sampleEntry.byteLength).getUint16(16) || null;
+      technical.bit_depth = new DataView(sampleEntry.buffer, sampleEntry.byteOffset, sampleEntry.byteLength).getUint16(18) || null;
+      technical.sample_rate = uint32be(sampleEntry, 24) >>> 16 || null;
+    }
+
+    if (entry.type === "alac" && entry.start + 28 < entry.end) {
+      const alac = await findDirectChild(file, entry.start + 28, entry.end, "alac");
+      if (alac) {
+        const config = await readBytes(file, alac.start, Math.min(28, alac.end - alac.start));
+        if (config.length >= 28 && config[8] === 0) {
+          technical.bit_depth = config[9];
+          technical.channels = config[13];
+          technical.bitrate = uint32be(config, 20) || null;
+          technical.sample_rate = uint32be(config, 24) || null;
+        }
+      }
+    }
+    return technical;
+  }
+
+  return technical;
+}
+
 function decodeMp4Data(payload) {
   return payload?.length >= 8 ? decodeUtf8(payload.subarray(8)) : null;
 }
 
 async function readM4aTags(file) {
   const tags = new Map();
-  const ilst = await findIlst(file);
-  if (!ilst) return tags;
+  const [ilst, technical] = await Promise.all([findIlst(file), readM4aTechnical(file)]);
+  if (!ilst) return { tags, technical };
 
   const textAtoms = new Map([
     ["©nam", "©nam"],
@@ -215,15 +284,15 @@ async function readM4aTags(file) {
     position = atom.next;
   }
 
-  return tags;
+  return { tags, technical };
 }
 
 async function readMetadata(file) {
   const extension = extensionOf(file.name);
-  const tags = extension === ".flac"
+  const { tags, technical } = extension === ".flac"
     ? await readFlacTags(file)
     : await readM4aTags(file);
-  return metadataFromTags(file, tags);
+  return { ...metadataFromTags(file, tags), ...technical };
 }
 
 function folderOf(path) {
@@ -300,7 +369,25 @@ export async function buildLibraryIndex(filesByPath, onProgress = () => {}) {
       label: album.label,
       media_format: album.media_format,
       folder_path: folderPath,
-      tracks: tracks.map(({ filename, title, track_mbid }) => ({ filename, title, track_mbid })),
+      tracks: tracks.map(({
+        filename,
+        title,
+        track_mbid,
+        codec,
+        bit_depth,
+        sample_rate,
+        bitrate,
+        channels,
+      }) => ({
+        filename,
+        title,
+        track_mbid,
+        codec,
+        bit_depth,
+        sample_rate,
+        bitrate,
+        channels,
+      })),
     });
   }
 

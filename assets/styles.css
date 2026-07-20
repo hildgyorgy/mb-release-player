@@ -1107,7 +1107,8 @@ body.has-mini-player {
 }
 
 .mini-player-title,
-.mini-player-artist {
+.mini-player-artist,
+.mini-player-quality {
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1126,6 +1127,23 @@ body.has-mini-player {
 
 .mini-player-artist:not(:empty)::before {
   content: "— ";
+}
+
+.mini-player-quality {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+}
+
+.mini-player-quality:not(:empty)::before {
+  content: "SOURCE  ";
+  color: var(--meta);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: .08em;
 }
 
 .mini-player-timeline {
@@ -1219,6 +1237,10 @@ body.has-mini-player {
   }
 
   .mini-player-artist {
+    display: none;
+  }
+
+  .mini-player-quality {
     display: none;
   }
 

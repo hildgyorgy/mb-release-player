@@ -24,6 +24,32 @@ function formatTime(seconds) {
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
 }
 
+function formatSampleRate(sampleRate) {
+  const value = Number(sampleRate);
+  if (!Number.isFinite(value) || value <= 0) return "";
+  const kilohertz = value / 1000;
+  return `${Number.isInteger(kilohertz) ? kilohertz : kilohertz.toFixed(1)} kHz`;
+}
+
+function formatSourceQuality(track) {
+  const codec = String(track?.codec || "").toUpperCase();
+  const sampleRate = formatSampleRate(track?.sample_rate);
+  const bitDepth = Number(track?.bit_depth);
+  const bitrate = Number(track?.bitrate);
+  const details = [];
+
+  if (codec === "AAC") {
+    if (Number.isFinite(bitrate) && bitrate > 0) {
+      details.push(`${Math.round(bitrate / 1000)} kbps`);
+    }
+  } else if (Number.isFinite(bitDepth) && bitDepth > 0) {
+    details.push(`${bitDepth}-bit`);
+  }
+  if (sampleRate) details.push(sampleRate);
+
+  return [codec, details.join(" / ")].filter(Boolean).join(" · ");
+}
+
 function ensureMiniPlayer() {
   if (miniPlayer?.isConnected) return miniPlayer;
 
@@ -41,6 +67,7 @@ function ensureMiniPlayer() {
       <div class="mini-player-copy">
         <span class="mini-player-title"></span>
         <span class="mini-player-artist"></span>
+        <span class="mini-player-quality"></span>
       </div>
       <div class="mini-player-timeline">
         <input class="mini-player-progress" type="range" min="0" max="0" value="0" step="0.1" aria-label="Track position">
@@ -102,6 +129,7 @@ function syncMiniPlayer() {
     player.querySelector(".mini-player-title").textContent = "Ready to play";
     player.querySelector(".mini-player-artist").textContent =
       `${playableTrackCount.toLocaleString()} local ${playableTrackCount === 1 ? "track" : "tracks"}`;
+    player.querySelector(".mini-player-quality").textContent = "";
     progress.max = "0";
     progress.value = "0";
     progress.style.setProperty("--player-progress", "0%");
@@ -115,6 +143,8 @@ function syncMiniPlayer() {
     entry.title || entry.localTrack.track?.title || entry.localTrack.file.name;
   player.querySelector(".mini-player-artist").textContent =
     entry.localTrack.album?.artist_name || "";
+  player.querySelector(".mini-player-quality").textContent =
+    formatSourceQuality(entry.localTrack.track);
 
   const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
   const currentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
