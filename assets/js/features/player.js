@@ -7,6 +7,7 @@ let objectUrl = "";
 let currentIndex = -1;
 let currentOut = null;
 let currentTracks = [];
+let viewedTracks = [];
 let miniPlayer = null;
 
 const ICONS = {
@@ -54,8 +55,8 @@ function ensureMiniPlayer() {
     if (action === "toggle") {
       if (currentIndex >= 0) await playIndex(currentIndex);
       else {
-        const firstPlayableIndex = currentTracks.findIndex((entry) => entry?.localTrack?.file);
-        if (firstPlayableIndex >= 0) await playIndex(firstPlayableIndex);
+        const firstPlayableIndex = viewedTracks.findIndex((entry) => entry?.localTrack?.file);
+        if (firstPlayableIndex >= 0) await playViewedIndex(firstPlayableIndex);
       }
     }
   });
@@ -73,15 +74,16 @@ function syncMiniPlayer() {
   const player = ensureMiniPlayer();
   const entry = currentTracks[currentIndex];
   const hasTrack = currentIndex >= 0 && !!entry?.localTrack?.file;
-  const playableTrackCount = currentTracks.reduce(
+  const playableTrackCount = viewedTracks.reduce(
     (count, item) => count + (item?.localTrack?.file ? 1 : 0),
     0
   );
   const hasPlayableTracks = playableTrackCount > 0;
+  const shouldShowPlayer = hasTrack || hasPlayableTracks;
 
-  player.hidden = !hasPlayableTracks;
-  document.body.classList.toggle("has-mini-player", hasPlayableTracks);
-  if (!hasPlayableTracks) return;
+  player.hidden = !shouldShowPlayer;
+  document.body.classList.toggle("has-mini-player", shouldShowPlayer);
+  if (!shouldShowPlayer) return;
 
   const isPlaying = hasTrack && !audio.paused && !audio.ended;
   const toggle = player.querySelector(".mini-player-toggle");
@@ -135,9 +137,19 @@ function releaseObjectUrl() {
 
 function syncPlayerUi() {
   if (currentOut) {
+    const activeEntry = currentTracks[currentIndex];
+    const activePath = activeEntry?.localTrack?.relativePath || "";
+    const activeFile = activeEntry?.localTrack?.file || null;
+
     currentOut.querySelectorAll(".track-play").forEach((button) => {
       const index = Number(button.dataset.playTrack);
-      const isCurrent = index === currentIndex;
+      const viewedEntry = viewedTracks[index];
+      const viewedPath = viewedEntry?.localTrack?.relativePath || "";
+      const viewedFile = viewedEntry?.localTrack?.file || null;
+      const isCurrent = !!activeEntry && (
+        (activePath && viewedPath === activePath) ||
+        (!activePath && activeFile && viewedFile === activeFile)
+      );
       const isPlaying = isCurrent && !audio.paused && !audio.ended;
       const row = button.closest("tr.track");
 
@@ -193,6 +205,30 @@ async function playIndex(index) {
   }
 }
 
+async function playViewedIndex(index) {
+  const entry = viewedTracks[index];
+  const file = entry?.localTrack?.file;
+  if (!file) return;
+
+  const activeEntry = currentTracks[currentIndex];
+  const activePath = activeEntry?.localTrack?.relativePath || "";
+  const viewedPath = entry.localTrack?.relativePath || "";
+  const isCurrentFile =
+    (activePath && viewedPath === activePath) ||
+    (!activePath && activeEntry?.localTrack?.file === file);
+
+  if (isCurrentFile) {
+    await playIndex(currentIndex);
+    return;
+  }
+
+  audio.pause();
+  releaseObjectUrl();
+  currentTracks = [...viewedTracks];
+  currentIndex = -1;
+  await playIndex(index);
+}
+
 function playNextLocalTrack() {
   for (let index = currentIndex + 1; index < currentTracks.length; index += 1) {
     if (currentTracks[index]?.localTrack?.file) {
@@ -226,9 +262,8 @@ audio.addEventListener("durationchange", syncMiniPlayer);
 audio.addEventListener("loadedmetadata", syncMiniPlayer);
 
 export function bindTrackPlayback(out, flatTracks) {
-  clearCurrentPlayback();
   currentOut = out;
-  currentTracks = flatTracks;
+  viewedTracks = flatTracks;
 
   out.querySelectorAll(".track-play").forEach((button) => {
     button.addEventListener("click", async (event) => {
@@ -236,16 +271,15 @@ export function bindTrackPlayback(out, flatTracks) {
       event.stopPropagation();
 
       const index = Number(button.dataset.playTrack);
-      if (Number.isInteger(index)) await playIndex(index);
+      if (Number.isInteger(index)) await playViewedIndex(index);
     });
   });
 
   syncPlayerUi();
 }
 
-export function resetTrackPlayback() {
-  clearCurrentPlayback();
+export function leaveTrackPlaybackView() {
   currentOut = null;
-  currentTracks = [];
+  viewedTracks = [];
   syncMiniPlayer();
 }

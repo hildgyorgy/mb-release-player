@@ -12,7 +12,7 @@ import { renderReleasePage } from "./features/releasePage.js";
 
 import { createMobileHeaderController } from "./ui/mobileHeader.js";
 import { bindLocalLibraryPicker } from "./services/localLibrary.js";
-import { resetTrackPlayback } from "./features/player.js";
+import { leaveTrackPlaybackView } from "./features/player.js";
 
 // ------------------------------
 // Loading / navigation
@@ -85,7 +85,7 @@ homeLink?.addEventListener("click", () => {
   const out = document.getElementById("out");
   const omni = document.getElementById("omni");
 
-  resetTrackPlayback();
+  leaveTrackPlaybackView();
 
   if (out) {
     out.innerHTML = emptyStateHtml;
