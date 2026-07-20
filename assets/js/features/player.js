@@ -51,7 +51,13 @@ function ensureMiniPlayer() {
     const action = event.target.closest("[data-player-action]")?.dataset.playerAction;
     if (action === "previous") playPreviousLocalTrack();
     if (action === "next") playNextLocalTrack();
-    if (action === "toggle" && currentIndex >= 0) await playIndex(currentIndex);
+    if (action === "toggle") {
+      if (currentIndex >= 0) await playIndex(currentIndex);
+      else {
+        const firstPlayableIndex = currentTracks.findIndex((entry) => entry?.localTrack?.file);
+        if (firstPlayableIndex >= 0) await playIndex(firstPlayableIndex);
+      }
+    }
   });
 
   miniPlayer.querySelector(".mini-player-progress").addEventListener("input", (event) => {
@@ -67,15 +73,41 @@ function syncMiniPlayer() {
   const player = ensureMiniPlayer();
   const entry = currentTracks[currentIndex];
   const hasTrack = currentIndex >= 0 && !!entry?.localTrack?.file;
+  const playableTrackCount = currentTracks.reduce(
+    (count, item) => count + (item?.localTrack?.file ? 1 : 0),
+    0
+  );
+  const hasPlayableTracks = playableTrackCount > 0;
 
-  player.hidden = !hasTrack;
-  document.body.classList.toggle("has-mini-player", hasTrack);
-  if (!hasTrack) return;
+  player.hidden = !hasPlayableTracks;
+  document.body.classList.toggle("has-mini-player", hasPlayableTracks);
+  if (!hasPlayableTracks) return;
 
-  const isPlaying = !audio.paused && !audio.ended;
+  const isPlaying = hasTrack && !audio.paused && !audio.ended;
   const toggle = player.querySelector(".mini-player-toggle");
   toggle.innerHTML = isPlaying ? ICONS.pause : ICONS.play;
   toggle.setAttribute("aria-label", isPlaying ? "Pause" : "Play");
+
+  const previous = player.querySelector('[data-player-action="previous"]');
+  const next = player.querySelector('[data-player-action="next"]');
+  previous.disabled = !hasTrack;
+  next.disabled = !hasTrack;
+
+  const progress = player.querySelector(".mini-player-progress");
+  progress.disabled = !hasTrack;
+
+  if (!hasTrack) {
+    player.querySelector(".mini-player-title").textContent = "Ready to play";
+    player.querySelector(".mini-player-artist").textContent =
+      `${playableTrackCount.toLocaleString()} local ${playableTrackCount === 1 ? "track" : "tracks"}`;
+    progress.max = "0";
+    progress.value = "0";
+    progress.style.setProperty("--player-progress", "0%");
+    const time = player.querySelector(".mini-player-time");
+    time.textContent = "0:00 / 0:00";
+    time.dataset.currentTime = "0:00";
+    return;
+  }
 
   player.querySelector(".mini-player-title").textContent =
     entry.title || entry.localTrack.track?.title || entry.localTrack.file.name;
@@ -84,7 +116,6 @@ function syncMiniPlayer() {
 
   const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
   const currentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
-  const progress = player.querySelector(".mini-player-progress");
   progress.max = String(duration);
   progress.value = String(Math.min(currentTime, duration || currentTime));
   progress.style.setProperty(
@@ -210,4 +241,11 @@ export function bindTrackPlayback(out, flatTracks) {
   });
 
   syncPlayerUi();
+}
+
+export function resetTrackPlayback() {
+  clearCurrentPlayback();
+  currentOut = null;
+  currentTracks = [];
+  syncMiniPlayer();
 }

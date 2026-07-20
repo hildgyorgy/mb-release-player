@@ -1066,6 +1066,15 @@ body.has-mini-player {
   background: var(--tr-hover);
 }
 
+.mini-player-button:disabled {
+  opacity: .32;
+  cursor: default;
+}
+
+.mini-player-button:disabled:hover {
+  background: transparent;
+}
+
 .mini-player-button svg {
   width: 18px;
   height: 18px;
@@ -1134,6 +1143,11 @@ body.has-mini-player {
   -webkit-appearance: none;
   background: transparent;
   cursor: pointer;
+}
+
+.mini-player-progress:disabled {
+  cursor: default;
+  opacity: .55;
 }
 
 .mini-player-progress::-webkit-slider-runnable-track {
