@@ -185,7 +185,23 @@ export function renderReleasePage(out, { rel, cover, covers }, onLoadRelease, on
   });
 
   out.innerHTML = `
-    ${renderHeader({ title, cover, mbLink, artist, date, country, label, labelId,catno, barcode, releaseNotes, streaming })}
+    ${renderHeader({
+      title,
+      cover,
+      mbLink,
+      artist,
+      date,
+      country,
+      label,
+      labelId,
+      catno,
+      barcode,
+      releaseNotes,
+      streaming,
+      localRelease: STATE.views.localRelease,
+      localTrackCount: STATE.views.localTrackCount,
+      totalTrackCount: flatTracks.length,
+    })}
     <div class="views">
   ${renderTracksView(
     mediaWithTracks,

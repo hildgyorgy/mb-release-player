@@ -31,11 +31,20 @@ function formatSampleRate(sampleRate) {
   return `${Number.isInteger(kilohertz) ? kilohertz : kilohertz.toFixed(1)} kHz`;
 }
 
+function formatChannels(channels) {
+  const value = Number(channels);
+  if (!Number.isInteger(value) || value <= 0) return "";
+  if (value === 1) return "MONO";
+  if (value === 2) return "STEREO";
+  return `${value} CHANNELS`;
+}
+
 function formatSourceQuality(track) {
   const codec = String(track?.codec || "").toUpperCase();
   const sampleRate = formatSampleRate(track?.sample_rate);
   const bitDepth = Number(track?.bit_depth);
   const bitrate = Number(track?.bitrate);
+  const channels = formatChannels(track?.channels);
   const details = [];
 
   if (codec === "AAC") {
@@ -47,7 +56,8 @@ function formatSourceQuality(track) {
   }
   if (sampleRate) details.push(sampleRate);
 
-  return [codec, details.join(" / ")].filter(Boolean).join(" · ");
+  const quality = [codec, details.join(" / ")].filter(Boolean).join(" · ");
+  return [quality, channels].filter(Boolean).join(" • ");
 }
 
 function ensureMiniPlayer() {

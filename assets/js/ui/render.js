@@ -15,6 +15,9 @@ export function renderHeader({
   barcode,
   releaseNotes,
   streaming,
+  localRelease,
+  localTrackCount,
+  totalTrackCount,
 }) {
     const labelHtml = label
     ? labelId
@@ -63,6 +66,12 @@ export function renderHeader({
           <div><span class="meta-k">Barcode:</span> ${barcode ? escHtml(barcode) : "<span class='muted'>(n/a)</span>"}</div>
           ${releaseNotes ? `<div><span class="meta-k">Notes:</span> <span class="muted">${escHtml(releaseNotes)}</span></div>` : ""}
         </div>
+        ${localRelease ? `
+          <div class="local-availability">
+            <span class="meta-k">Local:</span>
+            ${Number(localTrackCount).toLocaleString()} / ${Number(totalTrackCount).toLocaleString()} playable
+          </div>
+        ` : ""}
       </div>
 
       <div class="header-tabs tabs" id="tabs">
