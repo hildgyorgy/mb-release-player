@@ -445,7 +445,7 @@ export async function saveIndexWithFilePicker(json) {
     id: "mb-release-player-library-index",
     suggestedName: "library.json",
     types: [{
-      description: "MusicBrainz Release Player library index",
+      description: "MusicBrainz Explorer library index",
       accept: { "application/json": [".json"] },
     }],
   });

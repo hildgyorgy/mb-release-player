@@ -4,18 +4,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="MusicBrainz Release Player is a fast and elegant metadata explorer for music releases, recordings, credits, discographies and annotations - now with playing abilties">
+  <meta name="description" content="MusicBrainz Explorer is a fast and elegant metadata explorer for music releases, recordings, credits and discographies, with local playback.">
   <meta name="keywords" content="MusicBrainz, music metadata, release viewer, discography, album credits, recording database, classical music metadata">
 
   <meta name="author" content="György Hild">
 
-  <meta property="og:title" content="MusicBrainz Release Player">
+  <meta property="og:title" content="MusicBrainz Explorer">
   <meta property="og:description" content="Web music player wth elegant MusicBrainz release and discography explorer for collectors, editors and music lovers.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://hildgyorgy.github.io/mb-release-player/">
   <meta property="og:image" content="https://hildgyorgy.github.io/mb-release-player/apple-touch-icon.png">
 
-  <title>MusicBrainz Release Player - Browse Releases, Show Credits & Discographies</title>
+  <title>MusicBrainz Explorer — Explore Releases, Play Your Library</title>
   <link rel="icon" href="favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
@@ -29,7 +29,7 @@
     <div class="container">
       <div class="top-inner">
         <button class="brand brand-home" id="homeLink" type="button">
-          MusicBrainz Release Player
+          MusicBrainz Explorer
         </button>
 
         <div class="search">
@@ -51,39 +51,38 @@
       <div id="out">
         <section id="emptyState" class="empty-state seo-copy">
           <div class="empty-inner">
-            <img class="empty-logo" src="./assets/icons/MB_go.png" alt="" aria-hidden="true">
+            <button class="empty-logo-button" id="searchHelpOpen" type="button"
+              aria-label="Open search help" aria-haspopup="dialog">
+              <img class="empty-logo" src="./assets/icons/MB_go.png" alt="">
+            </button>
 
-            <div class="empty-help">
-              <p>
-                Type artist name + comma to search for artist<br>
-                <code>miles davis,</code>
-              </p>
+            <div class="empty-onboarding">
+              <button class="onboarding-action" id="findReleases" type="button">
+                <span class="onboarding-copy">
+                  <strong>Find releases</strong>
+                  <span>Search by artist, title or MusicBrainz ID.</span>
+                </span>
+                <span class="onboarding-arrow" aria-hidden="true">→</span>
+              </button>
 
-              <p>
-                Type comma + release/track title for releases<br>
-                <code>, kind of blue</code>
-              </p>
+              <button class="onboarding-action" id="openMusicFolder" type="button">
+                <span class="onboarding-copy">
+                  <strong>Connect Music Folder</strong>
+                  <span>Browse and play releases in your local library.</span>
+                </span>
+                <span class="onboarding-arrow" aria-hidden="true">→</span>
+              </button>
 
-              <p>
-                Type artist, release/track for combined search<br>
-                <code>miles davis, so what</code>
-              </p>
-
-              <p>
-                Paste a MusicBrainz release MBID<br>
-                <code>353021d1-3d84-4f17-9fe4-66788d785a9d</code>
-              </p>
+              <button class="onboarding-action" id="createLibraryIndex" type="button">
+                <span class="onboarding-copy">
+                  <strong>Create Library Index</strong>
+                  <span>Map your tagged music files for local playback.</span>
+                </span>
+                <span class="onboarding-arrow" aria-hidden="true">→</span>
+              </button>
             </div>
 
             <div class="local-library-start">
-              <div class="local-library-actions">
-                <button class="local-library-button pill" id="openMusicFolder" type="button">
-                  Connect Music Folder
-                </button>
-                <button class="local-library-button pill" id="createLibraryIndex" type="button">
-                  Create Library Index
-                </button>
-              </div>
               <input id="musicFolderInput" type="file" webkitdirectory multiple hidden>
               <input id="indexMusicFolderInput" type="file" webkitdirectory multiple hidden>
               <p class="local-library-status muted" id="musicFolderStatus" role="status" aria-live="polite">
@@ -97,10 +96,35 @@
     </div>
   </main>
 
+  <dialog class="search-help-dialog" id="searchHelpDialog" aria-labelledby="searchHelpTitle">
+    <div class="search-help-head">
+      <h2 id="searchHelpTitle">Explore releases. Play your own library.</h2>
+      <button class="search-help-close" id="searchHelpClose" type="button" aria-label="Close search help">×</button>
+    </div>
+    <div class="empty-help">
+      <p>
+        Type artist name + comma to search for artist<br>
+        <code>miles davis,</code>
+      </p>
+      <p>
+        Type comma + release/track title for releases<br>
+        <code>, kind of blue</code>
+      </p>
+      <p>
+        Type artist, release/track for combined search<br>
+        <code>miles davis, so what</code>
+      </p>
+      <p>
+        Paste a MusicBrainz release MBID<br>
+        <code>353021d1-3d84-4f17-9fe4-66788d785a9d</code>
+      </p>
+    </div>
+  </dialog>
+
   <footer class="footer muted">
     <div class="container footer-inner">
       <div class="footer-right">
-        <div>MB Release Player v0.1.0</div>
+        <div>MusicBrainz Explorer v0.1.0</div>
         <div>Data: MusicBrainz contributors • CC BY-NC-SA 3.0</div>
       </div>
     </div>

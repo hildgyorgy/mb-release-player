@@ -1,6 +1,6 @@
 {
-  "name": "MusicBrainz Release Player",
-  "short_name": "MB Player",
+  "name": "MusicBrainz Explorer",
+  "short_name": "MB Explorer",
   "icons": [
     {
       "src": "./android-chrome-192x192.png",

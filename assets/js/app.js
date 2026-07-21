@@ -34,9 +34,26 @@ export const App = Object.freeze({
 
     const bindHomeActions = () => {
       bindLocalLibraryPicker(document);
+
+      const helpDialog = document.getElementById("searchHelpDialog");
+      const helpOpen = document.getElementById("searchHelpOpen");
+      const findReleases = document.getElementById("findReleases");
+
+      helpOpen?.addEventListener("click", () => helpDialog?.showModal());
+      findReleases?.addEventListener("click", () => {
+        const omni = document.getElementById("omni");
+        omni?.focus({ preventScroll: true });
+      });
     };
 
     bindHomeActions();
+
+    const helpDialog = document.getElementById("searchHelpDialog");
+    const helpClose = document.getElementById("searchHelpClose");
+    helpClose?.addEventListener("click", () => helpDialog?.close());
+    helpDialog?.addEventListener("click", (event) => {
+      if (event.target === helpDialog) helpDialog.close();
+    });
 
     const Nav = createReleaseNavigator({
       getOut: () => document.getElementById("out"),
