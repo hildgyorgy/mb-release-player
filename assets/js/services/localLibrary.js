@@ -323,20 +323,20 @@ export function bindLocalLibraryPicker(root = document) {
       const approved = window.confirm(`${summary}\n\nSave library.json now?`);
 
       if (!approved) {
-        status.textContent = `Index created but not saved. ${summary}`;
+        status.textContent = `Index created but not saved.\n${summary}`;
         return;
       }
 
       if (directoryHandle) {
         await saveIndexToDirectory(directoryHandle, json);
-        status.textContent = `library.json saved in the selected Music folder. ${summary}`;
+        status.textContent = `library.json saved in the selected Music folder.\n${summary}`;
       } else {
         const savedWithPicker = await saveIndexWithFilePicker(json);
         if (savedWithPicker) {
-          status.textContent = `library.json saved. Keep it in the selected Music folder. ${summary}`;
+          status.textContent = `library.json saved. Keep it in the selected Music folder.\n${summary}`;
         } else {
           downloadIndex(json);
-          status.textContent = `library.json downloaded. Place it in the selected Music folder. ${summary}`;
+          status.textContent = `Place the downloaded library.json file in the selected Music folder.\n${summary}`;
         }
       }
 

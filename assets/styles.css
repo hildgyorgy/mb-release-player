@@ -379,9 +379,9 @@ a:hover {
 
 .empty-state {
   min-height: calc(100vh - var(--top-h) - 200px);
-  padding: 80px 0 100px;
+  padding: clamp(110px, 12vh, 190px) 0 100px;
   display: grid;
-  place-items: center;
+  place-items: start center;
   text-align: left;
 }
 
@@ -583,6 +583,14 @@ a:hover {
   margin-bottom: 0;
 }
 
+.search-help-about {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .local-library-start {
   width: 100%;
   margin-top: 15px;
@@ -592,6 +600,7 @@ a:hover {
   margin: 10px 0 0;
   font-size: 12px;
   line-height: 1.4;
+  white-space: pre-line;
 }
 
 .local-library-list {
@@ -616,6 +625,7 @@ a:hover {
 @media (max-width: 640px) {
   .empty-state {
     place-items: start;
+    padding-top: 70px;
   }
 
   .empty-inner,
@@ -1963,28 +1973,6 @@ tr.track.is-open+tr.details .perf {
   }
 }
 
-/* ------------------------------------------------------------
-   FOOTER
------------------------------------------------------------- */
-
-.footer {
-  width: 100%;
-  font-size: 12px;
-  line-height: 1.25;
-  border-top: 0 solid var(--border);
-  background: var(--bg);
-}
-
-.footer-inner {
-  padding-block: 80px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.footer-right {
-  text-align: right;
-  opacity: 0.85;
-}
 /* ------------------------------------------------------------
    ARTIST PANEL
 ------------------------------------------------------------ */
